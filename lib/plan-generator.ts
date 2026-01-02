@@ -1,6 +1,6 @@
 import { addDays, addWeeks, format, getDay, startOfWeek, isSameDay } from 'date-fns'
 
-export type SessionType = 'run' | 'strength' | 'swim' | 'core' | 'mobility' | 'prehab'
+export type SessionType = 'run' | 'strength' | 'swim' | 'core' | 'mobility' | 'prehab' | 'futsal' | 'padel' | 'sulis'
 
 export interface GeneratedSession {
   type: SessionType
