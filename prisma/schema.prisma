@@ -1,0 +1,150 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model UserSettings {
+  id            String   @id @default("singleton")
+  @@map("user_settings")
+  timezone      String   @default("Europe/Helsinki")
+  sex           String   @default("male") // "male" | "female"
+  heightCm      Int      @default(183)
+  weightKg      Float    @default(89.0)
+  goalWeightKg  Float    @default(80.0)
+  runFrequency  Int      @default(3) // 3 or 4 runs per week
+  swimFrequency Int      @default(1) // 1 or 2 swims per week
+  strengthFrequency Int  @default(3) // 3 or 4 strength sessions per week
+  restDay       String   @default("saturday") // day of week
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model DayPlan {
+  id        String   @id @default(cuid())
+  date      DateTime @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sessions  Session[]
+  @@map("day_plans")
+}
+
+model Session {
+  id          String   @id @default(cuid())
+  dayPlanId   String
+  dayPlan     DayPlan  @relation(fields: [dayPlanId], references: [id], onDelete: Cascade)
+  type        String   // "run" | "strength" | "swim" | "core" | "mobility" | "prehab"
+  title       String
+  status      String   @default("planned") // "planned" | "completed" | "skipped"
+  
+  // Planned fields
+  plannedRpe      Int?
+  plannedDuration Int? // minutes
+  plannedNotes    String?
+  
+  // Completed fields
+  completedRpe      Int?
+  completedDuration Int? // minutes
+  completedNotes    String?
+  
+  // Pain tracking
+  kneePainScore    Int? // 0-10
+  
+  // Relations
+  strengthExercises StrengthExercise[]
+  runDetails        RunDetails?
+  swimDetails       SwimDetails?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([dayPlanId])
+  @@index([type])
+  @@index([status])
+  @@map("sessions")
+}
+
+model StrengthExercise {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  name      String
+  sets      Int?
+  reps      Int?
+  load      Float? // kg
+  restTime  Int? // seconds
+  tempo     String? // e.g., "3-1-1-0"
+  rpe       Int?
+  notes     String?
+  order     Int      @default(0)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([sessionId])
+  @@map("strength_exercises")
+}
+
+model RunDetails {
+  id            String   @id @default(cuid())
+  sessionId     String   @unique
+  session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  plannedKm     Float?
+  completedKm   Float?
+  elevationGain Int? // meters
+  surface       String? // "trail" | "road" | "treadmill"
+  avgHeartRate  Int? // bpm
+  notes         String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@map("run_details")
+}
+
+model SwimDetails {
+  id            String   @id @default(cuid())
+  sessionId     String   @unique
+  session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  plannedMeters Int?
+  completedMeters Int?
+  sets          String? // description of drill sets
+  notes         String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@map("swim_details")
+}
+
+model PainLog {
+  id          String   @id @default(cuid())
+  date        DateTime
+  kneePain    Int      // 0-10
+  otherPain   String? // JSON string for other pain locations
+  notes       String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([date])
+  @@map("pain_logs")
+}
+
+model WeightLog {
+  id        String   @id @default(cuid())
+  date      DateTime
+  weightKg  Float
+  notes     String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([date])
+  @@map("weight_logs")
+}
+
