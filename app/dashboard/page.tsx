@@ -3,6 +3,8 @@ import { DashboardClient } from './dashboard-client'
 import { prisma } from '@/lib/prisma'
 import { subWeeks, startOfWeek, endOfWeek } from 'date-fns'
 
+export const dynamic = 'force-dynamic'
+
 async function getDashboardData() {
   const now = new Date()
   const fourWeeksAgo = subWeeks(now, 4)

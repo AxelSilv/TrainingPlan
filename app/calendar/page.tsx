@@ -5,6 +5,8 @@ import { CalendarClient } from './calendar-client'
 import { prisma } from '@/lib/prisma'
 import { startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns'
 
+export const dynamic = 'force-dynamic'
+
 async function getWeekData(date: Date) {
   const weekStart = startOfWeek(date, { weekStartsOn: 1 })
   const weekEnd = endOfWeek(date, { weekStartsOn: 1 })

@@ -2,6 +2,8 @@ import { Navigation, TopBar } from '@/components/navigation'
 import { SettingsClient } from './settings-client'
 import { prisma } from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+
 async function getSettings() {
   let settings = await prisma.userSettings.findUnique({
     where: { id: 'singleton' },

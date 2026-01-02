@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { Toaster } from "@/components/ui/toaster"
@@ -9,19 +9,20 @@ export const metadata: Metadata = {
   title: "Training Calendar",
   description: "Hypertrophy + Swimming + 100km Trail Ultra Training Calendar",
   manifest: "/manifest.json",
-  themeColor: "#222222",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "Training Calendar",
   },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: "cover",
-  },
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#222222",
 }
 
 export default function RootLayout({

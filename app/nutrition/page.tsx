@@ -2,6 +2,8 @@ import { Navigation, TopBar } from '@/components/navigation'
 import { NutritionClient } from './nutrition-client'
 import { prisma } from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+
 async function getNutritionData() {
   const settings = await prisma.userSettings.findUnique({
     where: { id: 'singleton' },
