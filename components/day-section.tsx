@@ -1,6 +1,7 @@
 'use client'
 
 import { format, isToday, isSameDay } from 'date-fns'
+import { fi } from 'date-fns/locale'
 import { SessionCard } from './session-card'
 import { cn } from '@/lib/utils'
 import type { Session, DayPlan } from '@prisma/client'
@@ -21,7 +22,7 @@ interface DaySectionProps {
 export function DaySection({ dayPlan, onSessionClick, onDayClick, isSelected }: DaySectionProps) {
   const date = new Date(dayPlan.date)
   const isTodayDate = isToday(date)
-  const dayName = format(date, 'EEEE')
+  const dayName = format(date, 'EEEE', { locale: fi })
   const dayNumber = format(date, 'd')
 
   return (
@@ -40,7 +41,7 @@ export function DaySection({ dayPlan, onSessionClick, onDayClick, isSelected }: 
               {dayName}
             </h3>
             <p className={cn("text-xs text-muted-foreground", isTodayDate && "text-primary")}>
-              {format(date, 'MMM d')}
+              {format(date, 'd.M.yyyy', { locale: fi })}
             </p>
           </div>
           {isTodayDate && (

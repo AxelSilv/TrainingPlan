@@ -85,3 +85,25 @@ export async function PATCH(
   }
 }
 
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { id } = params
+
+    // Delete session (cascade will handle related records)
+    await prisma.session.delete({
+      where: { id },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting session:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete session' },
+      { status: 500 }
+    )
+  }
+}
+

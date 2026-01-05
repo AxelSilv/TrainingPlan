@@ -147,6 +147,34 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
     await handleSave()
   }
 
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this session? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/sessions/${session.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!res.ok) throw new Error('Failed to delete session')
+
+      toast({
+        title: 'Session deleted',
+        description: 'The session has been removed.',
+      })
+
+      onUpdate()
+      onClose()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete session. Please try again.',
+        variant: 'destructive',
+      })
+    }
+  }
+
   const addExercise = () => {
     setExercises([...exercises, { name: '', sets: undefined, reps: undefined, load: undefined }])
   }
@@ -389,6 +417,17 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
               className="w-full mt-2 min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm"
               placeholder="Add notes about your session..."
             />
+          </div>
+
+          {/* Delete button */}
+          <div className="pt-4 border-t">
+            <Button 
+              variant="destructive" 
+              onClick={handleDelete}
+              className="w-full"
+            >
+              Delete Session
+            </Button>
           </div>
 
           {/* Save button */}

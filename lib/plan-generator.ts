@@ -99,6 +99,10 @@ export function generatePlan(settings: PlanSettings): GeneratedDay[] {
     const daySessions: GeneratedSession[] = []
     let warning: string | undefined
     
+    // Special case: Jan 4, 2026 - replace long run with 4.5km easy run
+    const jan4Date = new Date('2026-01-04T00:00:00')
+    const isJan4 = currentDate.toDateString() === jan4Date.toDateString()
+    
     // Check if this is a futsal day (replace run with futsal)
     if (isFutsalDay) {
       daySessions.push({
@@ -108,13 +112,36 @@ export function generatePlan(settings: PlanSettings): GeneratedDay[] {
         plannedDuration: 90,
         plannedNotes: 'Futsal game - replaces regular run',
       })
+    } else if (isJan4 && dayOfWeek === 0) {
+      // Jan 4 is a Sunday - replace long run with 4.5km easy run
+      daySessions.push({
+        type: 'run',
+        title: 'Easy Run 4.5 km',
+        plannedRpe: 5,
+        plannedDuration: 27, // ~6 min/km pace
+        plannedNotes: 'Easy conversational pace - beginner friendly distance',
+        runDetails: {
+          plannedKm: 4.5,
+          surface: 'road'
+        }
+      })
+      // Still add mobility
+      daySessions.push({
+        type: 'mobility',
+        title: 'Recovery Mobility',
+        plannedDuration: 20,
+        plannedNotes: 'Full body stretching, foam rolling, hip mobility'
+      })
     } else {
       // Generate sessions based on day of week
+      // Structure: 2 leg days + 2 upper body days per week
+      // Monday: Upper A, Wednesday: Legs, Friday: Upper B, Sunday: Long run
+      // Tuesday/Thursday: Easy runs, swims, core, mobility
       switch (dayOfWeek) {
         case 0: // Sunday - Long run day
           daySessions.push(...generateSundaySessions(weekNumber, phase, isDeloadWeek, weekRunFrequency))
           break
-        case 1: // Monday - Upper A (can add swim on some weeks)
+        case 1: // Monday - Upper Body A
           daySessions.push(...generateMondaySessions(weekNumber, phase, isDeloadWeek, weekSwimFrequency))
           break
         case 2: // Tuesday - Easy run + Core (or futsal if scheduled)
@@ -122,7 +149,7 @@ export function generatePlan(settings: PlanSettings): GeneratedDay[] {
             daySessions.push(...generateTuesdaySessions(weekNumber, phase, isDeloadWeek, weekRunFrequency, weekSwimFrequency))
           }
           break
-        case 3: // Wednesday - Legs (posterior or anterior) OR Prehab if conflict
+        case 3: // Wednesday - Leg Day 1
           const wedResult = generateWednesdaySessions(weekNumber, phase, isDeloadWeek, days, currentDate, weekRunFrequency)
           daySessions.push(...wedResult.sessions)
           if (wedResult.warning) warning = wedResult.warning
@@ -132,7 +159,7 @@ export function generatePlan(settings: PlanSettings): GeneratedDay[] {
             daySessions.push(...generateThursdaySessions(weekNumber, phase, isDeloadWeek, weekRunFrequency, weekSwimFrequency))
           }
           break
-        case 5: // Friday - Upper B (can add swim on some weeks)
+        case 5: // Friday - Upper Body B OR Leg Day 2 (alternating weeks for 2 leg days/week)
           daySessions.push(...generateFridaySessions(weekNumber, phase, isDeloadWeek, weekSwimFrequency))
           break
       }
@@ -298,19 +325,33 @@ function generateWednesdaySessions(weekNumber: number, phase: string, isDeload: 
   const sessions: GeneratedSession[] = []
   let warning: string | undefined
   
-  // Thursday always has a run (it's scheduled in the plan)
-  // To respect "no consecutive leg and running days", Wednesday should use prehab/mobility
-  // instead of heavy leg strength. This prevents injury risk.
-  sessions.push({
-    type: 'prehab',
-    title: 'Lower Body Prehab + Mobility',
-    plannedDuration: 40,
-    plannedNotes: 'Calves, tibialis raises, hip stability, single-leg control, mobility work. Light leg work to avoid conflict with Thursday run.',
-    plannedRpe: 4
-  })
+  // Wednesday - Leg Day 1 (alternating posterior/anterior focus)
+  const isPosteriorFocus = weekNumber % 2 === 1 // Odd weeks = posterior, even weeks = anterior
+  const legTitle = isPosteriorFocus ? 'Lower Body - Posterior Focus' : 'Lower Body - Anterior Focus'
+  const legNotes = isPosteriorFocus 
+    ? 'Focus: Hamstrings, glutes, calves. Deadlifts, RDLs, leg curls, calf raises.'
+    : 'Focus: Quads, glutes. Squats, leg press, lunges, leg extensions.'
   
-  // Note: Heavy leg days are scheduled on days that don't conflict with runs
-  // For now, we prioritize recovery and injury prevention
+  sessions.push({
+    type: 'strength',
+    title: legTitle,
+    plannedRpe: isDeload ? 6 : 7,
+    plannedDuration: 60,
+    plannedNotes: legNotes,
+    strengthExercises: isPosteriorFocus ? [
+      { name: 'Romanian Deadlift', sets: isDeload ? 3 : 4, reps: 8, restTime: 180, tempo: '3-1-1-0' },
+      { name: 'Leg Curl', sets: 3, reps: 10, restTime: 120 },
+      { name: 'Hip Thrust', sets: 3, reps: 12, restTime: 120 },
+      { name: 'Calf Raises', sets: 3, reps: 15, restTime: 90 },
+      { name: 'Good Mornings', sets: 3, reps: 10, restTime: 120 }
+    ] : [
+      { name: 'Back Squat', sets: isDeload ? 3 : 4, reps: 8, restTime: 180, tempo: '3-1-1-0' },
+      { name: 'Leg Press', sets: 3, reps: 12, restTime: 120 },
+      { name: 'Walking Lunges', sets: 3, reps: 12, restTime: 120 },
+      { name: 'Leg Extension', sets: 3, reps: 12, restTime: 90 },
+      { name: 'Bulgarian Split Squat', sets: 3, reps: 10, restTime: 120 }
+    ]
+  })
   
   return { sessions, warning }
 }
@@ -373,23 +414,58 @@ function generateThursdaySessions(weekNumber: number, phase: string, isDeload: b
 function generateFridaySessions(weekNumber: number, phase: string, isDeload: boolean, swimFrequency: number): GeneratedSession[] {
   const sessions: GeneratedSession[] = []
   
-  // Strength session
-  sessions.push({
-    type: 'strength',
-    title: 'Upper Body B',
-    plannedRpe: isDeload ? 6 : 7,
-    plannedDuration: 60,
-    plannedNotes: 'Focus: Shoulders + Arms emphasis (still includes chest + back)',
-    strengthExercises: [
-      { name: 'Overhead Press', sets: isDeload ? 3 : 4, reps: 8, restTime: 180, tempo: '3-1-1-0' },
-      { name: 'Weighted Pull-ups', sets: 3, reps: 8, restTime: 180 },
-      { name: 'Lateral Raises', sets: 3, reps: 12, restTime: 90 },
-      { name: 'Rear Delt Flyes', sets: 3, reps: 12, restTime: 90 },
-      { name: 'Close Grip Bench', sets: 3, reps: 10, restTime: 120 },
-      { name: 'Tricep Dips', sets: 3, reps: 12, restTime: 90 },
-      { name: 'Hammer Curls', sets: 3, reps: 12, restTime: 90 }
-    ]
-  })
+  // Friday alternates: Upper Body B OR Leg Day 2
+  // Week 1, 3, 5... = Upper Body B
+  // Week 2, 4, 6... = Leg Day 2 (to get 2 leg days per week)
+  const isUpperWeek = weekNumber % 2 === 1
+  
+  if (isUpperWeek) {
+    // Upper Body B
+    sessions.push({
+      type: 'strength',
+      title: 'Upper Body B',
+      plannedRpe: isDeload ? 6 : 7,
+      plannedDuration: 60,
+      plannedNotes: 'Focus: Shoulders + Arms emphasis (still includes chest + back)',
+      strengthExercises: [
+        { name: 'Overhead Press', sets: isDeload ? 3 : 4, reps: 8, restTime: 180, tempo: '3-1-1-0' },
+        { name: 'Weighted Pull-ups', sets: 3, reps: 8, restTime: 180 },
+        { name: 'Lateral Raises', sets: 3, reps: 12, restTime: 90 },
+        { name: 'Rear Delt Flyes', sets: 3, reps: 12, restTime: 90 },
+        { name: 'Close Grip Bench', sets: 3, reps: 10, restTime: 120 },
+        { name: 'Tricep Dips', sets: 3, reps: 12, restTime: 90 },
+        { name: 'Hammer Curls', sets: 3, reps: 12, restTime: 90 }
+      ]
+    })
+  } else {
+    // Leg Day 2 (opposite focus from Wednesday)
+    const wedIsPosterior = weekNumber % 2 === 1
+    const legTitle = wedIsPosterior ? 'Lower Body - Anterior Focus' : 'Lower Body - Posterior Focus'
+    const legNotes = wedIsPosterior
+      ? 'Focus: Quads, glutes. Squats, leg press, lunges, leg extensions.'
+      : 'Focus: Hamstrings, glutes, calves. Deadlifts, RDLs, leg curls, calf raises.'
+    
+    sessions.push({
+      type: 'strength',
+      title: legTitle,
+      plannedRpe: isDeload ? 6 : 7,
+      plannedDuration: 60,
+      plannedNotes: legNotes,
+      strengthExercises: wedIsPosterior ? [
+        { name: 'Back Squat', sets: isDeload ? 3 : 4, reps: 8, restTime: 180, tempo: '3-1-1-0' },
+        { name: 'Leg Press', sets: 3, reps: 12, restTime: 120 },
+        { name: 'Walking Lunges', sets: 3, reps: 12, restTime: 120 },
+        { name: 'Leg Extension', sets: 3, reps: 12, restTime: 90 },
+        { name: 'Bulgarian Split Squat', sets: 3, reps: 10, restTime: 120 }
+      ] : [
+        { name: 'Romanian Deadlift', sets: isDeload ? 3 : 4, reps: 8, restTime: 180, tempo: '3-1-1-0' },
+        { name: 'Leg Curl', sets: 3, reps: 10, restTime: 120 },
+        { name: 'Hip Thrust', sets: 3, reps: 12, restTime: 120 },
+        { name: 'Calf Raises', sets: 3, reps: 15, restTime: 90 },
+        { name: 'Good Mornings', sets: 3, reps: 10, restTime: 120 }
+      ]
+    })
+  }
   
   // Optional swim on Friday (if 2 swims/week and week allows)
   if (swimFrequency >= 2 && weekNumber % 3 === 0) {
@@ -411,40 +487,42 @@ function generateFridaySessions(weekNumber: number, phase: string, isDeload: boo
 
 function calculateLongRunDistance(weekNumber: number, phase: string, isDeload: boolean): number {
   if (isDeload) {
-    return Math.max(8, calculateLongRunDistance(weekNumber - 1, phase, false) * 0.75)
+    return Math.max(6, calculateLongRunDistance(weekNumber - 1, phase, false) * 0.75)
   }
   
-  const base = 12
-  const progression = Math.min(weekNumber * 0.5, 35) // Cap at 35km
+  // Reduced base distances for beginners
+  const base = 8 // Reduced from 12
+  const progression = Math.min(weekNumber * 0.4, 30) // Reduced progression, cap at 30km
   
   if (phase === 'base') {
-    return Math.min(base + progression, 20)
+    return Math.min(base + progression, 16) // Reduced max from 20
   } else if (phase === 'build') {
-    return Math.min(base + progression + 5, 28)
+    return Math.min(base + progression + 4, 24) // Reduced max from 28
   } else if (phase === 'specific') {
-    return Math.min(base + progression + 10, 35)
+    return Math.min(base + progression + 8, 30) // Reduced max from 35
   } else if (phase === 'peak') {
-    return Math.min(base + progression + 12, 40)
+    return Math.min(base + progression + 10, 35) // Reduced max from 40
   } else {
     // Taper
-    return Math.max(15, (base + progression) * 0.6)
+    return Math.max(12, (base + progression) * 0.6) // Reduced from 15
   }
 }
 
 function calculateEasyRunDistance(weekNumber: number, phase: string, isDeload: boolean): number {
   if (isDeload) {
-    return 6
+    return 4 // Reduced from 6
   }
   
-  const base = 6
-  const progression = Math.min(weekNumber * 0.2, 4)
+  // Reduced base distances for beginners
+  const base = 4 // Reduced from 6
+  const progression = Math.min(weekNumber * 0.15, 3) // Reduced progression
   
   if (phase === 'base') {
     return base + progression
   } else if (phase === 'build') {
-    return base + progression + 2
+    return base + progression + 1.5 // Reduced from +2
   } else if (phase === 'specific' || phase === 'peak') {
-    return base + progression + 3
+    return base + progression + 2.5 // Reduced from +3
   } else {
     return base
   }
