@@ -43,29 +43,41 @@ export async function PATCH(
 
     // Update strength exercises if provided
     if (body.strengthExercises && Array.isArray(body.strengthExercises)) {
-      // Delete existing exercises
+      // Delete existing exercises (cascade will delete sets)
       await prisma.strengthExercise.deleteMany({
         where: { sessionId: id },
       })
       
-      // Create new exercises
+      // Create new exercises with sets
       for (let i = 0; i < body.strengthExercises.length; i++) {
         const ex = body.strengthExercises[i]
         if (ex.name) { // Only create if name is provided
-          await prisma.strengthExercise.create({
+          const createdExercise = await prisma.strengthExercise.create({
             data: {
               sessionId: id,
               name: ex.name,
-              sets: ex.sets ?? null,
-              reps: ex.reps ?? null,
-              load: ex.load ?? null,
               restTime: ex.restTime ?? null,
               tempo: ex.tempo ?? null,
-              rpe: ex.rpe ?? null,
               notes: ex.notes ?? null,
               order: i,
             },
           })
+          
+          // Create sets for this exercise
+          if (ex.sets && Array.isArray(ex.sets)) {
+            for (const set of ex.sets) {
+              await prisma.exerciseSet.create({
+                data: {
+                  strengthExerciseId: createdExercise.id,
+                  setNumber: set.setNumber,
+                  reps: set.reps ?? null,
+                  load: set.load ?? null,
+                  rpe: set.rpe ?? null,
+                  notes: set.notes ?? null,
+                },
+              })
+            }
+          }
         }
       }
     }

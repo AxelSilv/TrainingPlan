@@ -34,6 +34,11 @@ export async function GET(request: NextRequest) {
             swimDetails: true,
             strengthExercises: {
               orderBy: { order: 'asc' },
+              include: {
+                sets: {
+                  orderBy: { setNumber: 'asc' },
+                },
+              },
             },
           },
           orderBy: { createdAt: 'asc' },

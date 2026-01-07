@@ -104,18 +104,30 @@ async function main() {
       if (session.type === 'strength' && session.strengthExercises) {
         for (let i = 0; i < session.strengthExercises.length; i++) {
           const ex = session.strengthExercises[i]
-          await prisma.strengthExercise.create({
+          const createdExercise = await prisma.strengthExercise.create({
             data: {
               sessionId: createdSession.id,
               name: ex.name,
-              sets: ex.sets,
-              reps: ex.reps,
-              load: ex.load,
               restTime: ex.restTime,
               tempo: ex.tempo,
               order: i
             }
           })
+          
+          // Create sets for this exercise
+          if (ex.sets && Array.isArray(ex.sets)) {
+            for (const set of ex.sets) {
+              await prisma.exerciseSet.create({
+                data: {
+                  strengthExerciseId: createdExercise.id,
+                  setNumber: set.setNumber,
+                  reps: set.reps,
+                  load: set.load,
+                  rpe: set.rpe,
+                }
+              })
+            }
+          }
         }
       }
     }

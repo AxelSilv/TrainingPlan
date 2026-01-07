@@ -14,13 +14,15 @@ import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { useToast } from '@/components/ui/use-toast'
 import { Info } from 'lucide-react'
-import type { Session, StrengthExercise, RunDetails, SwimDetails } from '@prisma/client'
+import type { Session, StrengthExercise, RunDetails, SwimDetails, ExerciseSet } from '@prisma/client'
 
 interface SessionEditorProps {
   session: Session & {
     runDetails?: RunDetails | null
     swimDetails?: SwimDetails | null
-    strengthExercises?: StrengthExercise[]
+    strengthExercises?: (StrengthExercise & {
+      sets?: ExerciseSet[]
+    })[]
   }
   open: boolean
   onClose: () => void
@@ -40,27 +42,37 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
   // Swim-specific fields
   const [completedMeters, setCompletedMeters] = useState<number>(session.swimDetails?.completedMeters ?? session.swimDetails?.plannedMeters ?? 0)
   
-  // Strength exercises state
+  // Strength exercises state - each exercise has an array of sets
   const [exercises, setExercises] = useState<Array<{
     id?: string
     name: string
-    sets?: number
-    reps?: number
-    load?: number
     restTime?: number
     tempo?: string
-    rpe?: number
     notes?: string
+    sets: Array<{
+      id?: string
+      setNumber: number
+      reps?: number
+      load?: number
+      rpe?: number
+      notes?: string
+    }>
   }>>(session.strengthExercises?.map(ex => ({
     id: ex.id,
     name: ex.name,
-    sets: ex.sets ?? undefined,
-    reps: ex.reps ?? undefined,
-    load: ex.load ?? undefined,
     restTime: ex.restTime ?? undefined,
     tempo: ex.tempo ?? undefined,
-    rpe: ex.rpe ?? undefined,
     notes: ex.notes ?? undefined,
+    sets: ex.sets && ex.sets.length > 0 
+      ? ex.sets.map(s => ({
+          id: s.id,
+          setNumber: s.setNumber,
+          reps: s.reps ?? undefined,
+          load: s.load ?? undefined,
+          rpe: s.rpe ?? undefined,
+          notes: s.notes ?? undefined,
+        }))
+      : [{ setNumber: 1, reps: undefined, load: undefined, rpe: undefined, notes: undefined }]
   })) || [])
   
   const { toast } = useToast()
@@ -77,13 +89,19 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
       setExercises(session.strengthExercises?.map(ex => ({
         id: ex.id,
         name: ex.name,
-        sets: ex.sets ?? undefined,
-        reps: ex.reps ?? undefined,
-        load: ex.load ?? undefined,
         restTime: ex.restTime ?? undefined,
         tempo: ex.tempo ?? undefined,
-        rpe: ex.rpe ?? undefined,
         notes: ex.notes ?? undefined,
+        sets: ex.sets && ex.sets.length > 0
+          ? ex.sets.map(s => ({
+              id: s.id,
+              setNumber: s.setNumber,
+              reps: s.reps ?? undefined,
+              load: s.load ?? undefined,
+              rpe: s.rpe ?? undefined,
+              notes: s.notes ?? undefined,
+            }))
+          : [{ setNumber: 1, reps: undefined, load: undefined, rpe: undefined, notes: undefined }]
       })) || [])
     }
   }, [open, session])
@@ -176,7 +194,13 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
   }
 
   const addExercise = () => {
-    setExercises([...exercises, { name: '', sets: undefined, reps: undefined, load: undefined }])
+    setExercises([...exercises, { 
+      name: '', 
+      restTime: undefined, 
+      tempo: undefined, 
+      notes: undefined,
+      sets: [{ setNumber: 1, reps: undefined, load: undefined, rpe: undefined, notes: undefined }]
+    }])
   }
 
   const updateExercise = (index: number, field: string, value: any) => {
@@ -187,6 +211,38 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
 
   const removeExercise = (index: number) => {
     setExercises(exercises.filter((_, i) => i !== index))
+  }
+
+  const addSet = (exerciseIndex: number) => {
+    const updated = [...exercises]
+    const exercise = updated[exerciseIndex]
+    const newSetNumber = exercise.sets.length + 1
+    updated[exerciseIndex] = {
+      ...exercise,
+      sets: [...exercise.sets, { setNumber: newSetNumber, reps: undefined, load: undefined, rpe: undefined, notes: undefined }]
+    }
+    setExercises(updated)
+  }
+
+  const removeSet = (exerciseIndex: number, setIndex: number) => {
+    const updated = [...exercises]
+    const exercise = updated[exerciseIndex]
+    if (exercise.sets.length > 1) {
+      updated[exerciseIndex] = {
+        ...exercise,
+        sets: exercise.sets.filter((_, i) => i !== setIndex).map((s, i) => ({ ...s, setNumber: i + 1 }))
+      }
+      setExercises(updated)
+    }
+  }
+
+  const updateSet = (exerciseIndex: number, setIndex: number, field: string, value: any) => {
+    const updated = [...exercises]
+    const exercise = updated[exerciseIndex]
+    const updatedSets = [...exercise.sets]
+    updatedSets[setIndex] = { ...updatedSets[setIndex], [field]: value }
+    updated[exerciseIndex] = { ...exercise, sets: updatedSets }
+    setExercises(updated)
   }
 
   const rpeDescription = (rpe: number) => {
@@ -313,14 +369,14 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
                   + Add Exercise
                 </Button>
               </div>
-              <div className="space-y-3">
-                {exercises.map((exercise, index) => (
-                  <div key={index} className="border rounded-lg p-3 space-y-2">
+              <div className="space-y-4">
+                {exercises.map((exercise, exerciseIndex) => (
+                  <div key={exerciseIndex} className="border rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <Input
                         placeholder="Exercise name"
                         value={exercise.name}
-                        onChange={(e) => updateExercise(index, 'name', e.target.value)}
+                        onChange={(e) => updateExercise(exerciseIndex, 'name', e.target.value)}
                         className="flex-1"
                       />
                       {exercises.length > 1 && (
@@ -328,60 +384,90 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => removeExercise(index)}
+                          onClick={() => removeExercise(exerciseIndex)}
                           className="ml-2"
                         >
                           ×
                         </Button>
                       )}
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      <Input
-                        type="number"
-                        placeholder="Sets"
-                        value={exercise.sets ?? ''}
-                        onChange={(e) => updateExercise(index, 'sets', e.target.value ? Number(e.target.value) : undefined)}
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Reps"
-                        value={exercise.reps ?? ''}
-                        onChange={(e) => updateExercise(index, 'reps', e.target.value ? Number(e.target.value) : undefined)}
-                      />
-                      <Input
-                        type="number"
-                        step="0.5"
-                        placeholder="Load (kg)"
-                        value={exercise.load ?? ''}
-                        onChange={(e) => updateExercise(index, 'load', e.target.value ? Number(e.target.value) : undefined)}
-                      />
-                      <Input
-                        type="number"
-                        placeholder="RPE"
-                        min="1"
-                        max="10"
-                        value={exercise.rpe ?? ''}
-                        onChange={(e) => updateExercise(index, 'rpe', e.target.value ? Number(e.target.value) : undefined)}
-                      />
-                    </div>
+                    
+                    {/* Exercise-level settings */}
                     <div className="grid grid-cols-2 gap-2">
                       <Input
                         type="number"
-                        placeholder="Rest (sec)"
+                        placeholder="Rest between sets (sec)"
                         value={exercise.restTime ?? ''}
-                        onChange={(e) => updateExercise(index, 'restTime', e.target.value ? Number(e.target.value) : undefined)}
+                        onChange={(e) => updateExercise(exerciseIndex, 'restTime', e.target.value ? Number(e.target.value) : undefined)}
                       />
                       <Input
                         placeholder="Tempo (e.g. 3-1-1-0)"
                         value={exercise.tempo ?? ''}
-                        onChange={(e) => updateExercise(index, 'tempo', e.target.value)}
+                        onChange={(e) => updateExercise(exerciseIndex, 'tempo', e.target.value)}
                       />
                     </div>
                     <Input
-                      placeholder="Notes (optional)"
+                      placeholder="Exercise notes (optional)"
                       value={exercise.notes ?? ''}
-                      onChange={(e) => updateExercise(index, 'notes', e.target.value)}
+                      onChange={(e) => updateExercise(exerciseIndex, 'notes', e.target.value)}
                     />
+
+                    {/* Sets */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Sets</Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addSet(exerciseIndex)}
+                        >
+                          + Add Set
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        {exercise.sets.map((set, setIndex) => (
+                          <div key={setIndex} className="flex items-center gap-2 p-2 bg-muted/50 rounded">
+                            <span className="text-sm font-medium w-8">#{set.setNumber}</span>
+                            <Input
+                              type="number"
+                              placeholder="Reps"
+                              value={set.reps ?? ''}
+                              onChange={(e) => updateSet(exerciseIndex, setIndex, 'reps', e.target.value ? Number(e.target.value) : undefined)}
+                              className="flex-1"
+                            />
+                            <Input
+                              type="number"
+                              step="0.5"
+                              placeholder="Load (kg)"
+                              value={set.load ?? ''}
+                              onChange={(e) => updateSet(exerciseIndex, setIndex, 'load', e.target.value ? Number(e.target.value) : undefined)}
+                              className="flex-1"
+                            />
+                            <Input
+                              type="number"
+                              placeholder="RPE"
+                              min="1"
+                              max="10"
+                              value={set.rpe ?? ''}
+                              onChange={(e) => updateSet(exerciseIndex, setIndex, 'rpe', e.target.value ? Number(e.target.value) : undefined)}
+                              className="w-20"
+                            />
+                            {exercise.sets.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeSet(exerciseIndex, setIndex)}
+                                className="w-8 h-8 p-0"
+                              >
+                                ×
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 ))}
                 {exercises.length === 0 && (

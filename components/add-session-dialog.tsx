@@ -31,13 +31,16 @@ interface AddSessionDialogProps {
     swimDetails?: { plannedMeters?: number; sets?: string }
     strengthExercises?: Array<{
       name: string
-      sets?: number
-      reps?: number
-      load?: number
       restTime?: number
       tempo?: string
-      rpe?: number
       notes?: string
+      sets: Array<{
+        setNumber: number
+        reps?: number
+        load?: number
+        rpe?: number
+        notes?: string
+      }>
     }>
   }) => void
 }
@@ -71,16 +74,19 @@ export function AddSessionDialog({ open, onClose, selectedDate, existingSessions
   const [plannedMeters, setPlannedMeters] = useState<number | undefined>(undefined)
   const [swimSets, setSwimSets] = useState('')
   
-  // Strength exercises
+  // Strength exercises - simplified for add dialog (user can add more sets in edit dialog)
   const [exercises, setExercises] = useState<Array<{
     name: string
-    sets?: number
-    reps?: number
-    load?: number
     restTime?: number
     tempo?: string
-    rpe?: number
     notes?: string
+    sets: Array<{
+      setNumber: number
+      reps?: number
+      load?: number
+      rpe?: number
+      notes?: string
+    }>
   }>>([])
   
   const { toast } = useToast()
@@ -114,7 +120,13 @@ export function AddSessionDialog({ open, onClose, selectedDate, existingSessions
   }
 
   const addExercise = () => {
-    setExercises([...exercises, { name: '', sets: undefined, reps: undefined, load: undefined }])
+    setExercises([...exercises, { 
+      name: '', 
+      restTime: undefined, 
+      tempo: undefined, 
+      notes: undefined,
+      sets: [{ setNumber: 1, reps: undefined, load: undefined, rpe: undefined, notes: undefined }]
+    }])
   }
 
   const updateExercise = (index: number, field: string, value: any) => {
@@ -422,39 +434,11 @@ export function AddSessionDialog({ open, onClose, selectedDate, existingSessions
                           </Button>
                         )}
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        <Input
-                          type="number"
-                          placeholder="Sets"
-                          value={exercise.sets ?? ''}
-                          onChange={(e) => updateExercise(index, 'sets', e.target.value ? Number(e.target.value) : undefined)}
-                        />
-                        <Input
-                          type="number"
-                          placeholder="Reps"
-                          value={exercise.reps ?? ''}
-                          onChange={(e) => updateExercise(index, 'reps', e.target.value ? Number(e.target.value) : undefined)}
-                        />
-                        <Input
-                          type="number"
-                          step="0.5"
-                          placeholder="Paino (kg)"
-                          value={exercise.load ?? ''}
-                          onChange={(e) => updateExercise(index, 'load', e.target.value ? Number(e.target.value) : undefined)}
-                        />
-                        <Input
-                          type="number"
-                          placeholder="RPE"
-                          min="1"
-                          max="10"
-                          value={exercise.rpe ?? ''}
-                          onChange={(e) => updateExercise(index, 'rpe', e.target.value ? Number(e.target.value) : undefined)}
-                        />
-                      </div>
+                      {/* Exercise-level settings */}
                       <div className="grid grid-cols-2 gap-2">
                         <Input
                           type="number"
-                          placeholder="Lepo (sek)"
+                          placeholder="Lepo sarjojen välillä (sek)"
                           value={exercise.restTime ?? ''}
                           onChange={(e) => updateExercise(index, 'restTime', e.target.value ? Number(e.target.value) : undefined)}
                         />
@@ -465,10 +449,72 @@ export function AddSessionDialog({ open, onClose, selectedDate, existingSessions
                         />
                       </div>
                       <Input
-                        placeholder="Muistiinpanot (valinnainen)"
+                        placeholder="Liikkeen muistiinpanot (valinnainen)"
                         value={exercise.notes ?? ''}
                         onChange={(e) => updateExercise(index, 'notes', e.target.value)}
                       />
+                      
+                      {/* Sets - simplified: one set per exercise in add dialog */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Sarja 1</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Toistot"
+                            value={exercise.sets[0]?.reps ?? ''}
+                            onChange={(e) => {
+                              const updated = [...exercises]
+                              updated[index] = {
+                                ...updated[index],
+                                sets: [{
+                                  ...updated[index].sets[0],
+                                  setNumber: 1,
+                                  reps: e.target.value ? Number(e.target.value) : undefined
+                                }]
+                              }
+                              setExercises(updated)
+                            }}
+                          />
+                          <Input
+                            type="number"
+                            step="0.5"
+                            placeholder="Paino (kg)"
+                            value={exercise.sets[0]?.load ?? ''}
+                            onChange={(e) => {
+                              const updated = [...exercises]
+                              updated[index] = {
+                                ...updated[index],
+                                sets: [{
+                                  ...updated[index].sets[0],
+                                  setNumber: 1,
+                                  load: e.target.value ? Number(e.target.value) : undefined
+                                }]
+                              }
+                              setExercises(updated)
+                            }}
+                          />
+                          <Input
+                            type="number"
+                            placeholder="RPE"
+                            min="1"
+                            max="10"
+                            value={exercise.sets[0]?.rpe ?? ''}
+                            onChange={(e) => {
+                              const updated = [...exercises]
+                              updated[index] = {
+                                ...updated[index],
+                                sets: [{
+                                  ...updated[index].sets[0],
+                                  setNumber: 1,
+                                  rpe: e.target.value ? Number(e.target.value) : undefined
+                                }]
+                              }
+                              setExercises(updated)
+                            }}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">Voit lisätä lisää sarjoja muokkaa-dialogissa</p>
+                      </div>
                     </div>
                   ))}
                   {exercises.length === 0 && (

@@ -25,6 +25,11 @@ async function getWeekData(date: Date) {
           swimDetails: true,
           strengthExercises: {
             orderBy: { order: 'asc' },
+            include: {
+              sets: {
+                orderBy: { setNumber: 'asc' },
+              },
+            },
           },
         },
         orderBy: { createdAt: 'asc' },

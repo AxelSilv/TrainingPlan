@@ -24,9 +24,9 @@ async function getDashboardData() {
       dayPlan: true,
       runDetails: true,
       strengthExercises: {
-        where: {
-          load: {
-            not: null,
+        include: {
+          sets: {
+            orderBy: { setNumber: 'asc' },
           },
         },
         orderBy: {
@@ -80,20 +80,31 @@ async function getDashboardData() {
   const adherence = totalSessions > 0 ? (completedSessions / totalSessions) * 100 : 0
 
   // Group exercises by name and track progression
+  // Use the maximum load from all sets for each exercise
   const exerciseProgression: Record<string, Array<{ date: Date; load: number; sets?: number; reps?: number }>> = {}
   sessions.forEach((session) => {
     if (session.type === 'strength' && session.strengthExercises) {
       session.strengthExercises.forEach((ex) => {
-        if (ex.load && ex.name) {
-          if (!exerciseProgression[ex.name]) {
-            exerciseProgression[ex.name] = []
+        if (ex.sets && ex.sets.length > 0 && ex.name) {
+          // Find max load from all sets
+          const maxLoadSet = ex.sets.reduce((max, set) => {
+            if (set.load && (!max || set.load > max.load)) {
+              return set
+            }
+            return max
+          }, null as { load: number; reps?: number | null } | null)
+          
+          if (maxLoadSet && maxLoadSet.load) {
+            if (!exerciseProgression[ex.name]) {
+              exerciseProgression[ex.name] = []
+            }
+            exerciseProgression[ex.name].push({
+              date: session.dayPlan.date,
+              load: maxLoadSet.load,
+              sets: ex.sets.length,
+              reps: maxLoadSet.reps ?? undefined,
+            })
           }
-          exerciseProgression[ex.name].push({
-            date: session.dayPlan.date,
-            load: ex.load,
-            sets: ex.sets ?? undefined,
-            reps: ex.reps ?? undefined,
-          })
         }
       })
     }
