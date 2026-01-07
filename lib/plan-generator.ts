@@ -84,16 +84,9 @@ export function generatePlan(settings: PlanSettings): GeneratedDay[] {
     const isDeloadWeek = weekNumber % 4 === 0
     const phase = getPhase(weekNumber, totalWeeks)
     
-    // Variable swim frequency: 1-2 per week (alternating or based on week)
-    const weekSwimFrequency = (weekNumber % 3 === 0) ? 2 : 1
-    
-    // Variable run frequency: 3-4 per week (more runs in later phases)
-    let weekRunFrequency = runFrequency
-    if (phase === 'specific' || phase === 'peak') {
-      weekRunFrequency = 4 // More runs in specific/peak phase
-    } else if (phase === 'base' && weekNumber <= 8) {
-      weekRunFrequency = 3 // Base phase starts with 3 runs/week
-    }
+    // Fixed structure: same rhythm every week
+    // Only Sunday alternates between Short Run and Swim every other week
+    const isEvenWeek = weekNumber % 2 === 0
     
     const daySessions: GeneratedSession[] = []
     let warning: string | undefined
@@ -135,8 +128,8 @@ export function generatePlan(settings: PlanSettings): GeneratedDay[] {
       // Saturday: Rest / light mobility
       // Sunday: Short Run or Swim
       switch (dayOfWeek) {
-        case 0: // Sunday - Short Run or Swim
-          daySessions.push(...generateSundaySessions(weekNumber, phase, isDeloadWeek, weekRunFrequency, weekSwimFrequency))
+        case 0: // Sunday - Short Run or Swim (alternates every other week)
+          daySessions.push(...generateSundaySessions(weekNumber, phase, isDeloadWeek, isEvenWeek))
           break
         case 1: // Monday - Leg Day 1 (heavy, quadriceps)
           const monResult = generateMondaySessions(weekNumber, phase, isDeloadWeek)
@@ -148,7 +141,7 @@ export function generatePlan(settings: PlanSettings): GeneratedDay[] {
           }
           break
         case 3: // Wednesday - Long Run
-          daySessions.push(...generateWednesdaySessions(weekNumber, phase, isDeloadWeek, weekRunFrequency))
+          daySessions.push(...generateWednesdaySessions(weekNumber, phase, isDeloadWeek))
           break
         case 4: // Thursday - Upper Body 2 (or futsal if scheduled)
           if (!isFutsalDay) {
@@ -191,15 +184,26 @@ function getPhase(weekNumber: number, totalWeeks: number): 'base' | 'build' | 's
   return 'taper'
 }
 
-function generateSundaySessions(weekNumber: number, phase: string, isDeload: boolean, runFrequency: number, swimFrequency: number): GeneratedSession[] {
+function generateSundaySessions(weekNumber: number, phase: string, isDeload: boolean, isEvenWeek: boolean): GeneratedSession[] {
   const sessions: GeneratedSession[] = []
   
   // Sunday: Short Run or Swim
-  // Alternate between run and swim, or do both if 2 swims/week
-  const doSwim = swimFrequency >= 2 || weekNumber % 2 === 0
-  const doRun = !doSwim || runFrequency >= 4
-  
-  if (doRun) {
+  // Alternates every other week: even weeks = Swim, odd weeks = Short Run
+  if (isEvenWeek) {
+    // Even weeks: Swim
+    sessions.push({
+      type: 'swim',
+      title: 'Swim - Recovery',
+      plannedRpe: 4,
+      plannedDuration: 45,
+      plannedNotes: 'Easy aerobic, technique drills',
+      swimDetails: {
+        plannedMeters: 1200,
+        sets: '200 warm-up, 4x50 drill, 4x100 easy, 200 cool-down'
+      }
+    })
+  } else {
+    // Odd weeks: Short Run
     const shortRunKm = calculateEasyRunDistance(weekNumber, phase, isDeload)
     sessions.push({
       type: 'run',
@@ -210,20 +214,6 @@ function generateSundaySessions(weekNumber: number, phase: string, isDeload: boo
       runDetails: {
         plannedKm: shortRunKm,
         surface: 'road'
-      }
-    })
-  }
-  
-  if (doSwim) {
-    sessions.push({
-      type: 'swim',
-      title: 'Swim - Recovery',
-      plannedRpe: 4,
-      plannedDuration: 45,
-      plannedNotes: 'Easy aerobic, technique drills',
-      swimDetails: {
-        plannedMeters: 1200,
-        sets: '200 warm-up, 4x50 drill, 4x100 easy, 200 cool-down'
       }
     })
   }
@@ -285,7 +275,7 @@ function generateTuesdaySessions(weekNumber: number, phase: string, isDeload: bo
   return sessions
 }
 
-function generateWednesdaySessions(weekNumber: number, phase: string, isDeload: boolean, runFrequency: number): GeneratedSession[] {
+function generateWednesdaySessions(weekNumber: number, phase: string, isDeload: boolean): GeneratedSession[] {
   const sessions: GeneratedSession[] = []
   
   // Wednesday: Long Run
