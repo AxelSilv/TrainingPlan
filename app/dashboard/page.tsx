@@ -87,12 +87,14 @@ async function getDashboardData() {
       session.strengthExercises.forEach((ex) => {
         if (ex.sets && ex.sets.length > 0 && ex.name) {
           // Find max load from all sets
-          const maxLoadSet = ex.sets.reduce((max, set) => {
-            if (set.load && (!max || set.load > max.load)) {
-              return set
+          const maxLoadSet = ex.sets.reduce<{ load: number; reps?: number | null } | null>((max, set) => {
+            if (set.load !== null && set.load !== undefined) {
+              if (!max || set.load > max.load) {
+                return { load: set.load, reps: set.reps }
+              }
             }
             return max
-          }, null as { load: number; reps?: number | null } | null)
+          }, null)
           
           if (maxLoadSet && maxLoadSet.load) {
             if (!exerciseProgression[ex.name]) {
