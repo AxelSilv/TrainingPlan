@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Mark Jan 2, 2026 Upper Body A as completed
+    // Mark Jan 2, 2026 strength session as completed
     const jan2 = new Date('2026-01-02T00:00:00')
     const jan2DayPlan = await prisma.dayPlan.findFirst({
       where: {
@@ -160,16 +160,17 @@ export async function POST(request: NextRequest) {
     })
     
     if (jan2DayPlan) {
-      const upperBodyA = jan2DayPlan.sessions.find(s => s.title.includes('Upper Body A'))
-      if (upperBodyA) {
+      // Find first strength session on Jan 2 (now it's "Upper Body 1" instead of "Upper Body A")
+      const firstStrength = jan2DayPlan.sessions.find(s => s.type === 'strength')
+      if (firstStrength) {
         await prisma.session.update({
-          where: { id: upperBodyA.id },
+          where: { id: firstStrength.id },
           data: {
             status: 'completed',
             completedNotes: 'Done - First workout completed!'
           }
         })
-        console.log('✅ Marked Jan 2 Upper Body A as completed')
+        console.log('✅ Marked Jan 2 strength session as completed')
       }
     }
     
