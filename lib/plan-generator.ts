@@ -95,58 +95,58 @@ export function generatePlan(settings: PlanSettings): GeneratedDay[] {
     const jan4Date = new Date('2026-01-04T00:00:00')
     const isJan4 = currentDate.toDateString() === jan4Date.toDateString()
     
-    // Check if this is a futsal day (replace run with futsal)
+    // Generate sessions based on day of week
+    // New structure from user requirements:
+    // Monday: Leg Day 1 (heavy, quadriceps)
+    // Tuesday: Upper Body 1 + core
+    // Wednesday: Long Run
+    // Thursday: Upper Body 2
+    // Friday: Leg Day 2 (hamstrings/glutes + calves)
+    // Saturday: Rest / light mobility
+    // Sunday: Short Run or Swim
+    
+    // Check if this is a futsal day (replaces the scheduled session for that day)
     if (isFutsalDay) {
       daySessions.push({
         type: 'futsal',
         title: 'Futsal',
         plannedRpe: 7,
         plannedDuration: 90,
-        plannedNotes: 'Futsal game - replaces regular run',
-      })
-    } else if (isJan4 && dayOfWeek === 0) {
-      // Jan 4 is a Sunday - replace with 4.5km easy run (beginner friendly)
-      daySessions.push({
-        type: 'run',
-        title: 'Easy Run 4.5 km',
-        plannedRpe: 5,
-        plannedDuration: 27, // ~6 min/km pace
-        plannedNotes: 'Easy conversational pace - beginner friendly distance',
-        runDetails: {
-          plannedKm: 4.5,
-          surface: 'road'
-        }
+        plannedNotes: 'Futsal game - replaces regular session',
       })
     } else {
-      // Generate sessions based on day of week
-      // New structure from user requirements:
-      // Monday: Leg Day 1 (heavy, quadriceps)
-      // Tuesday: Upper Body 1 + core
-      // Wednesday: Long Run
-      // Thursday: Upper Body 2
-      // Friday: Leg Day 2 (hamstrings/glutes + calves)
-      // Saturday: Rest / light mobility
-      // Sunday: Short Run or Swim
+      // Generate normal sessions based on day of week
       switch (dayOfWeek) {
         case 0: // Sunday - Short Run or Swim (alternates every other week)
-          daySessions.push(...generateSundaySessions(weekNumber, phase, isDeloadWeek, isEvenWeek))
+          if (isJan4) {
+            // Jan 4 is a Sunday - replace with 4.5km easy run (beginner friendly)
+            daySessions.push({
+              type: 'run',
+              title: 'Easy Run 4.5 km',
+              plannedRpe: 5,
+              plannedDuration: 27, // ~6 min/km pace
+              plannedNotes: 'Easy conversational pace - beginner friendly distance',
+              runDetails: {
+                plannedKm: 4.5,
+                surface: 'road'
+              }
+            })
+          } else {
+            daySessions.push(...generateSundaySessions(weekNumber, phase, isDeloadWeek, isEvenWeek))
+          }
           break
         case 1: // Monday - Leg Day 1 (heavy, quadriceps)
           const monResult = generateMondaySessions(weekNumber, phase, isDeloadWeek)
           daySessions.push(...monResult.sessions)
           break
-        case 2: // Tuesday - Upper Body 1 + core (or futsal if scheduled)
-          if (!isFutsalDay) {
-            daySessions.push(...generateTuesdaySessions(weekNumber, phase, isDeloadWeek))
-          }
+        case 2: // Tuesday - Upper Body 1 + core
+          daySessions.push(...generateTuesdaySessions(weekNumber, phase, isDeloadWeek))
           break
         case 3: // Wednesday - Long Run
           daySessions.push(...generateWednesdaySessions(weekNumber, phase, isDeloadWeek))
           break
-        case 4: // Thursday - Upper Body 2 (or futsal if scheduled)
-          if (!isFutsalDay) {
-            daySessions.push(...generateThursdaySessions(weekNumber, phase, isDeloadWeek))
-          }
+        case 4: // Thursday - Upper Body 2
+          daySessions.push(...generateThursdaySessions(weekNumber, phase, isDeloadWeek))
           break
         case 5: // Friday - Leg Day 2 (hamstrings/glutes + calves)
           const friResult = generateFridaySessions(weekNumber, phase, isDeloadWeek)

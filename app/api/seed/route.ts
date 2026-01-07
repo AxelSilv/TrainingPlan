@@ -71,12 +71,57 @@ export async function POST(request: NextRequest) {
     console.log(`📅 Generated ${generatedPlan.length} days of training plan`)
     
     // Create day plans and sessions
+    // Use upsert to avoid duplicates if seed is run multiple times
     for (const day of generatedPlan) {
-      const dayPlan = await prisma.dayPlan.create({
-        data: {
-          date: day.date
-        }
+      // Normalize date to start of day to avoid timezone issues
+      const normalizedDate = new Date(day.date)
+      normalizedDate.setHours(0, 0, 0, 0)
+      
+      // Check if day plan already exists
+      let dayPlan = await prisma.dayPlan.findUnique({
+        where: { date: normalizedDate }
       })
+      
+      if (!dayPlan) {
+        dayPlan = await prisma.dayPlan.create({
+          data: { date: normalizedDate }
+        })
+      } else {
+        // Delete existing sessions for this day to avoid duplicates
+        await prisma.exerciseSet.deleteMany({
+          where: {
+            strengthExercise: {
+              session: {
+                dayPlanId: dayPlan.id
+              }
+            }
+          }
+        })
+        await prisma.strengthExercise.deleteMany({
+          where: {
+            session: {
+              dayPlanId: dayPlan.id
+            }
+          }
+        })
+        await prisma.runDetails.deleteMany({
+          where: {
+            session: {
+              dayPlanId: dayPlan.id
+            }
+          }
+        })
+        await prisma.swimDetails.deleteMany({
+          where: {
+            session: {
+              dayPlanId: dayPlan.id
+            }
+          }
+        })
+        await prisma.session.deleteMany({
+          where: { dayPlanId: dayPlan.id }
+        })
+      }
       
       for (const session of day.sessions) {
         const createdSession = await prisma.session.create({
@@ -160,17 +205,17 @@ export async function POST(request: NextRequest) {
     })
     
     if (jan2DayPlan) {
-      // Find first strength session on Jan 2 (now it's "Upper Body 1" instead of "Upper Body A")
-      const firstStrength = jan2DayPlan.sessions.find(s => s.type === 'strength')
-      if (firstStrength) {
+      // Jan 2, 2026 is a Monday - should be "Leg Day 1 - Quadriceps Focus"
+      const legDay1 = jan2DayPlan.sessions.find(s => s.title.includes('Leg Day 1 - Quadriceps Focus'))
+      if (legDay1) {
         await prisma.session.update({
-          where: { id: firstStrength.id },
+          where: { id: legDay1.id },
           data: {
             status: 'completed',
             completedNotes: 'Done - First workout completed!'
           }
         })
-        console.log('✅ Marked Jan 2 strength session as completed')
+        console.log('✅ Marked Jan 2 Leg Day 1 as completed')
       }
     }
     
