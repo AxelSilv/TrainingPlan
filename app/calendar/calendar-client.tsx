@@ -81,13 +81,16 @@ export function CalendarClient({ initialDate, initialWeekData }: CalendarClientP
     swimDetails?: { plannedMeters?: number; sets?: string }
     strengthExercises?: Array<{
       name: string
-      sets?: number
-      reps?: number
-      load?: number
       restTime?: number
       tempo?: string
-      rpe?: number
       notes?: string
+      sets: Array<{
+        setNumber: number
+        reps?: number
+        load?: number
+        rpe?: number
+        notes?: string
+      }>
     }>
   }) => {
     if (!selectedDay) {
