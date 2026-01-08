@@ -180,6 +180,7 @@ async function main() {
                   reps: set.reps,
                   load: set.load,
                   rpe: set.rpe,
+                  isDropSet: set.isDropSet ?? false,
                 }
               })
             }
