@@ -21,6 +21,7 @@ export interface GeneratedSession {
       reps?: number
       load?: number
       rpe?: number
+      isDropSet?: boolean
     }>
   }>
   swimDetails?: {
