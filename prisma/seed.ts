@@ -226,7 +226,7 @@ async function main() {
               sessionId: createdSession.id,
               name: ex.name,
               restTime: ex.restTime,
-              notes: (ex as any).notes ?? null,
+              notes: ex.notes ?? null,
               order: i
             }
           })

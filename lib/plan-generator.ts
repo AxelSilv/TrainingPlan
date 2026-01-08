@@ -16,12 +16,14 @@ export interface GeneratedSession {
   strengthExercises?: Array<{
     name: string
     restTime?: number
+    notes?: string
     sets: Array<{
       setNumber: number
       reps?: number
       load?: number
       rpe?: number
       isDropSet?: boolean
+      notes?: string
     }>
   }>
   swimDetails?: {
