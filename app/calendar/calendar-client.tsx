@@ -22,7 +22,29 @@ interface CalendarClientProps {
 
 export function CalendarClient({ initialDate, initialWeekData }: CalendarClientProps) {
   const [currentDate, setCurrentDate] = useState(initialDate)
-  const [weekData, setWeekData] = useState(initialWeekData)
+  
+  // Remove duplicates from initial data as well
+  const normalizeDate = (date: Date | string) => {
+    const d = new Date(date)
+    d.setHours(0, 0, 0, 0)
+    return d.toISOString().split('T')[0]
+  }
+  
+  const uniqueInitialData = new Map<string, typeof initialWeekData[0]>()
+  for (const day of initialWeekData) {
+    const key = normalizeDate(day.date)
+    if (!uniqueInitialData.has(key)) {
+      uniqueInitialData.set(key, day)
+    } else {
+      // Merge sessions if duplicate found
+      const existing = uniqueInitialData.get(key)!
+      existing.sessions = [...existing.sessions, ...day.sessions]
+    }
+  }
+  
+  const [weekData, setWeekData] = useState(Array.from(uniqueInitialData.values()).sort((a, b) => {
+    return new Date(a.date).getTime() - new Date(b.date).getTime()
+  }))
   const [selectedSession, setSelectedSession] = useState<Session | null>(null)
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
@@ -46,7 +68,32 @@ export function CalendarClient({ initialDate, initialWeekData }: CalendarClientP
     const res = await fetch(`/api/calendar/week?${params}`)
     if (res.ok) {
       const data = await res.json()
-      setWeekData(data)
+      
+      // Remove duplicates on client side as well (normalize dates)
+      const normalizeDate = (date: Date | string) => {
+        const d = new Date(date)
+        d.setHours(0, 0, 0, 0)
+        return d.toISOString().split('T')[0]
+      }
+      
+      const uniqueData = new Map<string, typeof data[0]>()
+      for (const day of data) {
+        const key = normalizeDate(day.date)
+        if (!uniqueData.has(key)) {
+          uniqueData.set(key, day)
+        } else {
+          // Merge sessions if duplicate found
+          const existing = uniqueData.get(key)!
+          existing.sessions = [...existing.sessions, ...day.sessions]
+        }
+      }
+      
+      // Convert back to array and sort by date
+      const sortedData = Array.from(uniqueData.values()).sort((a, b) => {
+        return new Date(a.date).getTime() - new Date(b.date).getTime()
+      })
+      
+      setWeekData(sortedData)
     }
   }
 
