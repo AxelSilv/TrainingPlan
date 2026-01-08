@@ -223,9 +223,8 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
     setExercises([...exercises, { 
       name: '', 
       restTime: undefined, 
-      tempo: undefined, 
       notes: undefined,
-      sets: [{ setNumber: 1, reps: undefined, load: undefined, rpe: undefined, notes: undefined }]
+      sets: [{ setNumber: 1, reps: undefined, load: undefined, rpe: undefined, isDropSet: false, notes: undefined }]
     }])
   }
 
