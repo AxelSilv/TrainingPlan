@@ -38,13 +38,32 @@ async function getWeekData(date: Date) {
     orderBy: { date: 'asc' },
   })
 
+  // Normalize dates to start of day for comparison
+  const normalizeDate = (date: Date) => {
+    const d = new Date(date)
+    d.setHours(0, 0, 0, 0)
+    return d.toISOString().split('T')[0]
+  }
+  
+  // Remove duplicates - keep only the first occurrence of each date
+  const uniqueDayPlans = new Map<string, typeof dayPlans[0]>()
+  for (const dp of dayPlans) {
+    const key = normalizeDate(dp.date)
+    if (!uniqueDayPlans.has(key)) {
+      uniqueDayPlans.set(key, dp)
+    } else {
+      // If duplicate found, merge sessions (keep all sessions from both)
+      const existing = uniqueDayPlans.get(key)!
+      existing.sessions = [...existing.sessions, ...dp.sessions]
+    }
+  }
+  
   // Create day plans for all days in week (even if no sessions)
   const allDays = eachDayOfInterval({ start: weekStart, end: weekEnd })
-  const dayPlansMap = new Map(dayPlans.map(dp => [dp.date.toISOString().split('T')[0], dp]))
   
   const weekData = allDays.map(day => {
-    const key = day.toISOString().split('T')[0]
-    const existing = dayPlansMap.get(key)
+    const key = normalizeDate(day)
+    const existing = uniqueDayPlans.get(key)
     if (existing) return existing
     
     return {
