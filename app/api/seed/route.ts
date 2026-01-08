@@ -132,8 +132,7 @@ export async function POST(request: NextRequest) {
     // Create day plans and sessions
     // Use upsert to avoid duplicates if seed is run multiple times
     // Preserve first two weeks of January 2026 (Jan 2-15) - user has already edited these
-    const preserveStartDate = new Date('2026-01-02T00:00:00')
-    const preserveEndDate = new Date('2026-01-15T23:59:59')
+    // Note: preserveStartDate and preserveEndDate are already defined above
     
     for (const day of generatedPlan) {
       // Normalize date to start of day to avoid timezone issues
