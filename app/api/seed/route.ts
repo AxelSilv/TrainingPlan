@@ -168,7 +168,6 @@ export async function POST(request: NextRequest) {
                 sessionId: createdSession.id,
                 name: ex.name,
                 restTime: ex.restTime,
-                tempo: ex.tempo,
                 order: i
               }
             })

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { startOfWeek, endOfWeek, addWeeks, subWeeks, getDay } from 'date-fns'
 
 export async function PATCH(
   request: NextRequest,
@@ -57,7 +58,6 @@ export async function PATCH(
               sessionId: id,
               name: ex.name,
               restTime: ex.restTime ?? null,
-              tempo: ex.tempo ?? null,
               notes: ex.notes ?? null,
               order: i,
             },
@@ -73,6 +73,7 @@ export async function PATCH(
                   reps: set.reps ?? null,
                   load: set.load ?? null,
                   rpe: set.rpe ?? null,
+                  isDropSet: set.isDropSet ?? false,
                   notes: set.notes ?? null,
                 },
               })
@@ -85,7 +86,105 @@ export async function PATCH(
     const updated = await prisma.session.update({
       where: { id },
       data: updateData,
+      include: {
+        dayPlan: true,
+        runDetails: true,
+      },
     })
+
+    // Handle skipped long run distance carry-over
+    if (updated.status === 'skipped' && updated.type === 'run' && updated.runDetails?.plannedKm) {
+      const sessionDate = new Date(updated.dayPlan.date)
+      const dayOfWeek = getDay(sessionDate) // 0 = Sunday, 3 = Wednesday
+      
+      // Only handle long runs (Wednesday)
+      if (dayOfWeek === 3 && updated.title.includes('Long Run')) {
+        const skippedDistance = updated.runDetails.plannedKm
+        
+        // Find next week's Wednesday (long run day)
+        const nextWeekStart = startOfWeek(addWeeks(sessionDate, 1), { weekStartsOn: 1 })
+        const nextWednesday = new Date(nextWeekStart)
+        nextWednesday.setDate(nextWeekStart.getDate() + 2) // Wednesday is 2 days after Monday
+        
+        // Find the next week's long run session
+        const nextWeekLongRun = await prisma.session.findFirst({
+          where: {
+            dayPlan: {
+              date: {
+                gte: new Date(nextWednesday.getFullYear(), nextWednesday.getMonth(), nextWednesday.getDate()),
+                lt: new Date(nextWednesday.getFullYear(), nextWednesday.getMonth(), nextWednesday.getDate() + 1),
+              },
+            },
+            type: 'run',
+            title: { contains: 'Long Run' },
+          },
+          include: {
+            runDetails: true,
+            dayPlan: true,
+          },
+        })
+        
+        if (nextWeekLongRun && nextWeekLongRun.runDetails) {
+          // Store the original distance temporarily
+          const originalDistance = nextWeekLongRun.runDetails.plannedKm
+          
+          // Update next week's long run with skipped distance
+          await prisma.runDetails.update({
+            where: { sessionId: nextWeekLongRun.id },
+            data: {
+              plannedKm: skippedDistance,
+            },
+          })
+          
+          // Update the session title to reflect new distance
+          await prisma.session.update({
+            where: { id: nextWeekLongRun.id },
+            data: {
+              title: `Long Run ${skippedDistance.toFixed(1)} km`,
+            },
+          })
+          
+          // Recursively carry over the original distance to the week after
+          if (originalDistance) {
+            const weekAfterStart = startOfWeek(addWeeks(nextWednesday, 1), { weekStartsOn: 1 })
+            const weekAfterWednesday = new Date(weekAfterStart)
+            weekAfterWednesday.setDate(weekAfterStart.getDate() + 2)
+            
+            const weekAfterLongRun = await prisma.session.findFirst({
+              where: {
+                dayPlan: {
+                  date: {
+                    gte: new Date(weekAfterWednesday.getFullYear(), weekAfterWednesday.getMonth(), weekAfterWednesday.getDate()),
+                    lt: new Date(weekAfterWednesday.getFullYear(), weekAfterWednesday.getMonth(), weekAfterWednesday.getDate() + 1),
+                  },
+                },
+                type: 'run',
+                title: { contains: 'Long Run' },
+              },
+              include: {
+                runDetails: true,
+              },
+            })
+            
+            if (weekAfterLongRun && weekAfterLongRun.runDetails) {
+              await prisma.runDetails.update({
+                where: { sessionId: weekAfterLongRun.id },
+                data: {
+                  plannedKm: originalDistance,
+                },
+              })
+              
+              await prisma.session.update({
+                where: { id: weekAfterLongRun.id },
+                data: {
+                  title: `Long Run ${originalDistance.toFixed(1)} km`,
+                },
+              })
+            }
+          }
+        }
+      }
+    }
 
     return NextResponse.json(updated)
   } catch (error) {

@@ -79,19 +79,19 @@ export function CalendarClient({ initialDate, initialWeekData }: CalendarClientP
     plannedNotes?: string
     runDetails?: { plannedKm?: number; elevationGain?: number; surface?: string }
     swimDetails?: { plannedMeters?: number; sets?: string }
-    strengthExercises?: Array<{
-      name: string
-      restTime?: number
-      tempo?: string
-      notes?: string
-      sets: Array<{
-        setNumber: number
-        reps?: number
-        load?: number
-        rpe?: number
+      strengthExercises?: Array<{
+        name: string
+        restTime?: number
         notes?: string
+        sets: Array<{
+          setNumber: number
+          reps?: number
+          load?: number
+          rpe?: number
+          isDropSet?: boolean
+          notes?: string
+        }>
       }>
-    }>
   }) => {
     if (!selectedDay) {
       alert('Valitse ensin päivä kalenterista')

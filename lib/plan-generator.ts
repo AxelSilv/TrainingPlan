@@ -16,7 +16,6 @@ export interface GeneratedSession {
   strengthExercises?: Array<{
     name: string
     restTime?: number
-    tempo?: string
     sets: Array<{
       setNumber: number
       reps?: number
@@ -232,7 +231,7 @@ function generateMondaySessions(weekNumber: number, phase: string, isDeload: boo
     plannedDuration: 60,
     plannedNotes: 'Heavy quadriceps focus: squats, leg press, lunges, leg extensions',
     strengthExercises: [
-      { name: 'Back Squat', restTime: 180, tempo: '3-1-1-0', sets: Array.from({ length: isDeload ? 3 : 4 }, (_, i) => ({ setNumber: i + 1, reps: 8 })) },
+      { name: 'Back Squat', restTime: 180, sets: Array.from({ length: isDeload ? 3 : 4 }, (_, i) => ({ setNumber: i + 1, reps: 8 })) },
       { name: 'Leg Press', restTime: 120, sets: Array.from({ length: 3 }, (_, i) => ({ setNumber: i + 1, reps: 12 })) },
       { name: 'Walking Lunges', restTime: 120, sets: Array.from({ length: 3 }, (_, i) => ({ setNumber: i + 1, reps: 12 })) },
       { name: 'Leg Extension', restTime: 90, sets: Array.from({ length: 3 }, (_, i) => ({ setNumber: i + 1, reps: 12 })) },
@@ -254,8 +253,8 @@ function generateTuesdaySessions(weekNumber: number, phase: string, isDeload: bo
     plannedDuration: 60,
     plannedNotes: 'Focus: Chest + Back emphasis (still includes shoulders + arms)',
     strengthExercises: [
-      { name: 'Bench Press', restTime: 180, tempo: '3-1-1-0', sets: Array.from({ length: isDeload ? 3 : 4 }, (_, i) => ({ setNumber: i + 1, reps: 8 })) },
-      { name: 'Barbell Row', restTime: 180, tempo: '2-1-1-0', sets: Array.from({ length: isDeload ? 3 : 4 }, (_, i) => ({ setNumber: i + 1, reps: 8 })) },
+      { name: 'Bench Press', restTime: 180, sets: Array.from({ length: isDeload ? 3 : 4 }, (_, i) => ({ setNumber: i + 1, reps: 8 })) },
+      { name: 'Barbell Row', restTime: 180, sets: Array.from({ length: isDeload ? 3 : 4 }, (_, i) => ({ setNumber: i + 1, reps: 8 })) },
       { name: 'Incline DB Press', restTime: 120, sets: Array.from({ length: 3 }, (_, i) => ({ setNumber: i + 1, reps: 10 })) },
       { name: 'Pull-ups', restTime: 120, sets: Array.from({ length: 3 }, (_, i) => ({ setNumber: i + 1, reps: 8 })) },
       { name: 'Lateral Raises', restTime: 90, sets: Array.from({ length: 3 }, (_, i) => ({ setNumber: i + 1, reps: 12 })) },
@@ -310,7 +309,7 @@ function generateThursdaySessions(weekNumber: number, phase: string, isDeload: b
     plannedDuration: 60,
     plannedNotes: 'Focus: Shoulders + Arms emphasis (still includes chest + back)',
     strengthExercises: [
-      { name: 'Overhead Press', restTime: 180, tempo: '3-1-1-0', sets: Array.from({ length: isDeload ? 3 : 4 }, (_, i) => ({ setNumber: i + 1, reps: 8 })) },
+      { name: 'Overhead Press', restTime: 180, sets: Array.from({ length: isDeload ? 3 : 4 }, (_, i) => ({ setNumber: i + 1, reps: 8 })) },
       { name: 'Weighted Pull-ups', restTime: 180, sets: Array.from({ length: 3 }, (_, i) => ({ setNumber: i + 1, reps: 8 })) },
       { name: 'Lateral Raises', restTime: 90, sets: Array.from({ length: 3 }, (_, i) => ({ setNumber: i + 1, reps: 12 })) },
       { name: 'Rear Delt Flyes', restTime: 90, sets: Array.from({ length: 3 }, (_, i) => ({ setNumber: i + 1, reps: 12 })) },
@@ -334,7 +333,7 @@ function generateFridaySessions(weekNumber: number, phase: string, isDeload: boo
     plannedDuration: 60,
     plannedNotes: 'Focus: Hamstrings, glutes, calves. Deadlifts, RDLs, leg curls, hip thrusts, calf raises.',
     strengthExercises: [
-      { name: 'Romanian Deadlift', restTime: 180, tempo: '3-1-1-0', sets: Array.from({ length: isDeload ? 3 : 4 }, (_, i) => ({ setNumber: i + 1, reps: 8 })) },
+      { name: 'Romanian Deadlift', restTime: 180, sets: Array.from({ length: isDeload ? 3 : 4 }, (_, i) => ({ setNumber: i + 1, reps: 8 })) },
       { name: 'Leg Curl', restTime: 120, sets: Array.from({ length: 3 }, (_, i) => ({ setNumber: i + 1, reps: 10 })) },
       { name: 'Hip Thrust', restTime: 120, sets: Array.from({ length: 3 }, (_, i) => ({ setNumber: i + 1, reps: 12 })) },
       { name: 'Calf Raises', restTime: 90, sets: Array.from({ length: 3 }, (_, i) => ({ setNumber: i + 1, reps: 15 })) },

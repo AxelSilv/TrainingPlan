@@ -32,13 +32,13 @@ interface AddSessionDialogProps {
     strengthExercises?: Array<{
       name: string
       restTime?: number
-      tempo?: string
       notes?: string
       sets: Array<{
         setNumber: number
         reps?: number
         load?: number
         rpe?: number
+        isDropSet?: boolean
         notes?: string
       }>
     }>
@@ -78,13 +78,13 @@ export function AddSessionDialog({ open, onClose, selectedDate, existingSessions
   const [exercises, setExercises] = useState<Array<{
     name: string
     restTime?: number
-    tempo?: string
     notes?: string
     sets: Array<{
       setNumber: number
       reps?: number
       load?: number
       rpe?: number
+      isDropSet?: boolean
       notes?: string
     }>
   }>>([])
@@ -123,9 +123,8 @@ export function AddSessionDialog({ open, onClose, selectedDate, existingSessions
     setExercises([...exercises, { 
       name: '', 
       restTime: undefined, 
-      tempo: undefined, 
       notes: undefined,
-      sets: [{ setNumber: 1, reps: undefined, load: undefined, rpe: undefined, notes: undefined }]
+      sets: [{ setNumber: 1, reps: undefined, load: undefined, rpe: undefined, isDropSet: false, notes: undefined }]
     }])
   }
 
@@ -441,11 +440,6 @@ export function AddSessionDialog({ open, onClose, selectedDate, existingSessions
                           placeholder="Lepo sarjojen välillä (sek)"
                           value={exercise.restTime ?? ''}
                           onChange={(e) => updateExercise(index, 'restTime', e.target.value ? Number(e.target.value) : undefined)}
-                        />
-                        <Input
-                          placeholder="Tempo (e.g. 3-1-1-0)"
-                          value={exercise.tempo ?? ''}
-                          onChange={(e) => updateExercise(index, 'tempo', e.target.value)}
                         />
                       </div>
                       <Input

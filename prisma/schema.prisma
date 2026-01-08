@@ -78,7 +78,6 @@ model StrengthExercise {
   session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   name      String
   restTime  Int? // seconds (rest between sets)
-  tempo     String? // e.g., "3-1-1-0" (applies to all sets)
   notes     String? // exercise-level notes
   order     Int     @default(0)
 
@@ -99,6 +98,7 @@ model ExerciseSet {
   reps               Int?
   load               Float? // kg
   rpe                Int?
+  isDropSet          Boolean @default(false) // true if this set is a drop set
   notes              String? // set-specific notes
 
   createdAt DateTime @default(now())

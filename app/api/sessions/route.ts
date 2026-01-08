@@ -86,7 +86,6 @@ export async function POST(request: NextRequest) {
               sessionId: session.id,
               name: ex.name,
               restTime: ex.restTime ?? null,
-              tempo: ex.tempo ?? null,
               notes: ex.notes ?? null,
               order: i,
             },
@@ -102,6 +101,7 @@ export async function POST(request: NextRequest) {
                   reps: set.reps ?? null,
                   load: set.load ?? null,
                   rpe: set.rpe ?? null,
+                  isDropSet: set.isDropSet ?? false,
                   notes: set.notes ?? null,
                 },
               })

@@ -154,7 +154,6 @@ async function main() {
               sessionId: createdSession.id,
               name: ex.name,
               restTime: ex.restTime,
-              tempo: ex.tempo,
               order: i
             }
           })

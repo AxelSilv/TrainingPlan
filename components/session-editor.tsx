@@ -47,7 +47,6 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
     id?: string
     name: string
     restTime?: number
-    tempo?: string
     notes?: string
     sets: Array<{
       id?: string
@@ -55,13 +54,13 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
       reps?: number
       load?: number
       rpe?: number
+      isDropSet?: boolean
       notes?: string
     }>
   }>>(session.strengthExercises?.map(ex => ({
     id: ex.id,
     name: ex.name,
     restTime: ex.restTime ?? undefined,
-    tempo: ex.tempo ?? undefined,
     notes: ex.notes ?? undefined,
     sets: ex.sets && ex.sets.length > 0 
       ? ex.sets.map(s => ({
@@ -70,10 +69,13 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
           reps: s.reps ?? undefined,
           load: s.load ?? undefined,
           rpe: s.rpe ?? undefined,
+          isDropSet: (s as any).isDropSet ?? false,
           notes: s.notes ?? undefined,
         }))
-      : [{ setNumber: 1, reps: undefined, load: undefined, rpe: undefined, notes: undefined }]
+      : [{ setNumber: 1, reps: undefined, load: undefined, rpe: undefined, isDropSet: false, notes: undefined }]
   })) || [])
+  
+  const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null)
   
   const { toast } = useToast()
 
@@ -90,7 +92,6 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
         id: ex.id,
         name: ex.name,
         restTime: ex.restTime ?? undefined,
-        tempo: ex.tempo ?? undefined,
         notes: ex.notes ?? undefined,
         sets: ex.sets && ex.sets.length > 0
           ? ex.sets.map(s => ({
@@ -99,14 +100,15 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
               reps: s.reps ?? undefined,
               load: s.load ?? undefined,
               rpe: s.rpe ?? undefined,
+              isDropSet: (s as any).isDropSet ?? false,
               notes: s.notes ?? undefined,
             }))
-          : [{ setNumber: 1, reps: undefined, load: undefined, rpe: undefined, notes: undefined }]
+          : [{ setNumber: 1, reps: undefined, load: undefined, rpe: undefined, isDropSet: false, notes: undefined }]
       })) || [])
     }
   }, [open, session])
 
-  const handleSave = async () => {
+  const handleSave = async (showToast = true) => {
     try {
       const updateData: any = {
         status,
@@ -140,20 +142,44 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
 
       if (!res.ok) throw new Error('Failed to update session')
 
-      toast({
-        title: 'Session updated',
-        description: 'Your session has been saved.',
-      })
+      if (showToast) {
+        toast({
+          title: 'Session updated',
+          description: 'Your session has been saved.',
+        })
+      }
 
       onUpdate()
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update session. Please try again.',
-        variant: 'destructive',
-      })
+      if (showToast) {
+        toast({
+          title: 'Error',
+          description: 'Failed to update session. Please try again.',
+          variant: 'destructive',
+        })
+      }
     }
   }
+  
+  // Auto-save function with debounce
+  const triggerAutoSave = () => {
+    if (autoSaveTimeout) {
+      clearTimeout(autoSaveTimeout)
+    }
+    const timeout = setTimeout(() => {
+      handleSave(false) // Don't show toast for auto-save
+    }, 1000) // 1 second debounce
+    setAutoSaveTimeout(timeout)
+  }
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeout) {
+        clearTimeout(autoSaveTimeout)
+      }
+    }
+  }, [autoSaveTimeout])
 
   const handleQuickComplete = async () => {
     setStatus('completed')
@@ -207,10 +233,12 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
     const updated = [...exercises]
     updated[index] = { ...updated[index], [field]: value }
     setExercises(updated)
+    triggerAutoSave()
   }
 
   const removeExercise = (index: number) => {
     setExercises(exercises.filter((_, i) => i !== index))
+    triggerAutoSave()
   }
 
   const addSet = (exerciseIndex: number) => {
@@ -219,9 +247,10 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
     const newSetNumber = exercise.sets.length + 1
     updated[exerciseIndex] = {
       ...exercise,
-      sets: [...exercise.sets, { setNumber: newSetNumber, reps: undefined, load: undefined, rpe: undefined, notes: undefined }]
+      sets: [...exercise.sets, { setNumber: newSetNumber, reps: undefined, load: undefined, rpe: undefined, isDropSet: false, notes: undefined }]
     }
     setExercises(updated)
+    triggerAutoSave()
   }
 
   const removeSet = (exerciseIndex: number, setIndex: number) => {
@@ -233,6 +262,7 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
         sets: exercise.sets.filter((_, i) => i !== setIndex).map((s, i) => ({ ...s, setNumber: i + 1 }))
       }
       setExercises(updated)
+      triggerAutoSave()
     }
   }
 
@@ -243,6 +273,7 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
     updatedSets[setIndex] = { ...updatedSets[setIndex], [field]: value }
     updated[exerciseIndex] = { ...exercise, sets: updatedSets }
     setExercises(updated)
+    triggerAutoSave()
   }
 
   const rpeDescription = (rpe: number) => {
@@ -393,17 +424,12 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
                     </div>
                     
                     {/* Exercise-level settings */}
-                    <div className="grid grid-cols-2 gap-2">
+                    <div>
                       <Input
                         type="number"
                         placeholder="Rest between sets (sec)"
                         value={exercise.restTime ?? ''}
                         onChange={(e) => updateExercise(exerciseIndex, 'restTime', e.target.value ? Number(e.target.value) : undefined)}
-                      />
-                      <Input
-                        placeholder="Tempo (e.g. 3-1-1-0)"
-                        value={exercise.tempo ?? ''}
-                        onChange={(e) => updateExercise(exerciseIndex, 'tempo', e.target.value)}
                       />
                     </div>
                     <Input
@@ -451,8 +477,17 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
                               max="10"
                               value={set.rpe ?? ''}
                               onChange={(e) => updateSet(exerciseIndex, setIndex, 'rpe', e.target.value ? Number(e.target.value) : undefined)}
-                              className="w-20"
+                              className="w-16"
                             />
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="checkbox"
+                                checked={set.isDropSet ?? false}
+                                onChange={(e) => updateSet(exerciseIndex, setIndex, 'isDropSet', e.target.checked)}
+                                className="w-4 h-4"
+                              />
+                              <Label className="text-xs">Drop</Label>
+                            </div>
                             {exercise.sets.length > 1 && (
                               <Button
                                 type="button"
