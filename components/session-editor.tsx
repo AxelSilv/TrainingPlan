@@ -555,7 +555,7 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>
+            <Button onClick={() => handleSave(true)}>
               Save
             </Button>
           </div>
