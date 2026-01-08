@@ -58,10 +58,17 @@ async function main() {
   
   // Create day plans and sessions
   // Use upsert to avoid duplicates if seed is run multiple times
+  // Preserve first two weeks of January 2026 (Jan 2-15) - user has already edited these
+  const preserveStartDate = new Date('2026-01-02T00:00:00')
+  const preserveEndDate = new Date('2026-01-15T23:59:59')
+  
   for (const day of generatedPlan) {
     // Normalize date to start of day to avoid timezone issues
     const normalizedDate = new Date(day.date)
     normalizedDate.setHours(0, 0, 0, 0)
+    
+    // Skip if this date is in the first two weeks of January 2026
+    const isPreservedDate = normalizedDate >= preserveStartDate && normalizedDate <= preserveEndDate
     
     // Check if day plan already exists
     let dayPlan = await prisma.dayPlan.findUnique({
@@ -72,7 +79,8 @@ async function main() {
       dayPlan = await prisma.dayPlan.create({
         data: { date: normalizedDate }
       })
-    } else {
+    } else if (!isPreservedDate) {
+      // Only delete existing sessions if NOT in preserved period
       // Delete existing sessions for this day to avoid duplicates
       await prisma.exerciseSet.deleteMany({
         where: {
@@ -107,6 +115,10 @@ async function main() {
       await prisma.session.deleteMany({
         where: { dayPlanId: dayPlan.id }
       })
+    } else {
+      // If date is preserved and dayPlan exists, skip creating sessions
+      console.log(`⏭️  Preserving existing sessions for ${normalizedDate.toISOString().split('T')[0]}`)
+      continue
     }
     
     for (const session of day.sessions) {
