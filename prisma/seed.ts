@@ -14,7 +14,7 @@ async function main() {
   await prisma.painLog.deleteMany()
   
   // Only delete sessions outside preserved period
-  const sessionsToDelete = await prisma.session.findMany({
+  const sessionsToDelete = await prisma.trainingSession.findMany({
     where: {
       dayPlan: {
         date: {
@@ -55,7 +55,7 @@ async function main() {
         sessionId: { in: sessionIdsToDelete },
       },
     })
-    await prisma.session.deleteMany({
+    await prisma.trainingSession.deleteMany({
       where: {
         id: { in: sessionIdsToDelete },
       },
@@ -146,7 +146,7 @@ async function main() {
     }
     
     // Get existing sessions for this day
-    const existingSessions = await prisma.session.findMany({
+    const existingSessions = await prisma.trainingSession.findMany({
       where: { dayPlanId: dayPlan.id },
       include: {
         runDetails: true,
@@ -226,9 +226,9 @@ async function main() {
           sessionId: { in: sessionIdsToDelete }
         }
       })
-      await prisma.session.deleteMany({
-        where: { id: { in: sessionIdsToDelete } }
-      })
+        await prisma.trainingSession.deleteMany({
+          where: { id: { in: sessionIdsToDelete } }
+        })
       console.log(`🗑️  Deleted ${sessionIdsToDelete.length} unmodified sessions for ${normalizedDate.toISOString().split('T')[0]}`)
     }
     
@@ -243,8 +243,8 @@ async function main() {
       
       if (similarSession) {
         // Update only planned fields, preserve completed fields
-        await prisma.session.update({
-          where: { id: similarSession.id },
+          await prisma.trainingSession.update({
+            where: { id: similarSession.id },
           data: {
             plannedRpe: session.plannedRpe,
             plannedDuration: session.plannedDuration,
@@ -256,7 +256,7 @@ async function main() {
         continue
       }
       
-      const createdSession = await prisma.session.create({
+      const createdSession = await prisma.trainingSession.create({
         data: {
           dayPlanId: dayPlan.id,
           type: session.type,
@@ -445,7 +445,7 @@ async function main() {
     // Jan 2, 2026 is a Monday - should be "Leg Day 1 - Quadriceps Focus"
     const legDay1 = jan2DayPlan.sessions.find(s => s.title.includes('Leg Day 1 - Quadriceps Focus'))
     if (legDay1) {
-      await prisma.session.update({
+      await prisma.trainingSession.update({
         where: { id: legDay1.id },
         data: {
           status: 'completed',

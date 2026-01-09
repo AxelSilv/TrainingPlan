@@ -4,17 +4,17 @@ import { format, isToday, isSameDay } from 'date-fns'
 import { fi } from 'date-fns/locale'
 import { SessionCard } from './session-card'
 import { cn } from '@/lib/utils'
-import type { Session, DayPlan } from '@prisma/client'
+import type { TrainingSession, DayPlan } from '@prisma/client'
 
 interface DaySectionProps {
   dayPlan: DayPlan & {
-    sessions: (Session & {
+    sessions: (TrainingSession & {
       runDetails?: { plannedKm?: number | null; completedKm?: number | null } | null
       swimDetails?: { plannedMeters?: number | null; completedMeters?: number | null } | null
       strengthExercises?: Array<{ name: string }>
     })[]
   }
-  onSessionClick: (session: Session) => void
+  onSessionClick: (session: TrainingSession) => void
   onDayClick?: (date: Date) => void
   isSelected?: boolean
 }

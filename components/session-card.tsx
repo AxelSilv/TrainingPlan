@@ -3,7 +3,7 @@
 import { Card } from '@/components/ui/card'
 import { CheckCircle2, Circle, XCircle, Activity, Waves, Dumbbell, Target, StretchHorizontal, Heart } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { Session } from '@prisma/client'
+import type { TrainingSession } from '@prisma/client'
 
 const typeIcons = {
   run: Activity,
@@ -30,7 +30,7 @@ const typeColors = {
 }
 
 interface SessionCardProps {
-  session: Session & {
+  session: TrainingSession & {
     runDetails?: { plannedKm?: number | null; completedKm?: number | null } | null
     swimDetails?: { plannedMeters?: number | null; completedMeters?: number | null } | null
     strengthExercises?: Array<{ name: string }>

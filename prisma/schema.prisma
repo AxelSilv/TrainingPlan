@@ -10,15 +10,75 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// NextAuth models
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String    // hashed password
+  name          String?
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  accounts      Account[]
+  sessions      Session[]
+  userSettings  UserSettings?
+  dayPlans      DayPlan[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
 model UserSettings {
-  id                String   @id @default("singleton")
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   timezone          String   @default("Europe/Helsinki")
   sex               String   @default("male") // "male" | "female"
   heightCm          Int      @default(183)
   weightKg          Float    @default(89.0)
   goalWeightKg      Float    @default(80.0)
   runFrequency      Int      @default(3) // 3 or 4 runs per week
-  swimFrequency     Int      @default(1) // 1 or 2 swims per week
+  swimFrequency      Int      @default(1) // 1 or 2 swims per week
   strengthFrequency Int      @default(3) // 3 or 4 strength sessions per week
   restDay           String   @default("saturday") // day of week
   createdAt         DateTime @default(now())
@@ -29,15 +89,19 @@ model UserSettings {
 
 model DayPlan {
   id        String    @id @default(cuid())
-  date      DateTime  @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  sessions  Session[]
+  sessions  TrainingSession[]
 
+  @@unique([userId, date])
+  @@index([userId])
   @@map("day_plans")
 }
 
-model Session {
+model TrainingSession {
   id        String  @id @default(cuid())
   dayPlanId String
   dayPlan   DayPlan @relation(fields: [dayPlanId], references: [id], onDelete: Cascade)
@@ -69,13 +133,13 @@ model Session {
   @@index([dayPlanId])
   @@index([type])
   @@index([status])
-  @@map("sessions")
+  @@map("training_sessions")
 }
 
 model StrengthExercise {
   id        String  @id @default(cuid())
   sessionId String
-  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session   TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   name      String
   restTime  Int? // seconds (rest between sets)
   notes     String? // exercise-level notes
@@ -111,7 +175,7 @@ model ExerciseSet {
 model RunDetails {
   id            String  @id @default(cuid())
   sessionId     String  @unique
-  session       Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session       TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   plannedKm     Float?
   completedKm   Float?
   elevationGain Int? // meters
@@ -128,7 +192,7 @@ model RunDetails {
 model SwimDetails {
   id              String  @id @default(cuid())
   sessionId       String  @unique
-  session         Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session         TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   plannedMeters   Int?
   completedMeters Int?
   sets            String? // description of drill sets
@@ -142,6 +206,7 @@ model SwimDetails {
 
 model PainLog {
   id        String   @id @default(cuid())
+  userId    String
   date      DateTime
   kneePain  Int // 0-10
   otherPain String? // JSON string for other pain locations
@@ -150,12 +215,13 @@ model PainLog {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([date])
+  @@index([userId, date])
   @@map("pain_logs")
 }
 
 model WeightLog {
   id       String   @id @default(cuid())
+  userId   String
   date     DateTime
   weightKg Float
   notes    String?
@@ -163,6 +229,6 @@ model WeightLog {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([date])
+  @@index([userId, date])
   @@map("weight_logs")
 }

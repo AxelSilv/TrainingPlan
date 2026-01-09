@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns'
+import { requireAuth } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user // Unauthorized response
+    
     const searchParams = request.nextUrl.searchParams
     const weekStart = searchParams.get('weekStart')
     const weekEnd = searchParams.get('weekEnd')
@@ -22,6 +26,7 @@ export async function GET(request: NextRequest) {
 
     const dayPlans = await prisma.dayPlan.findMany({
       where: {
+        userId: user.id,
         date: {
           gte: start,
           lte: end,

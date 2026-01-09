@@ -2,19 +2,22 @@ import { Navigation, TopBar } from '@/components/navigation'
 import { DashboardClient } from './dashboard-client'
 import { prisma } from '@/lib/prisma'
 import { subWeeks, startOfWeek, endOfWeek } from 'date-fns'
+import { getCurrentUser } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
-async function getDashboardData() {
+async function getDashboardData(userId: string) {
   const now = new Date()
   const fourWeeksAgo = subWeeks(now, 4)
   const weekStart = startOfWeek(now, { weekStartsOn: 1 })
   const weekEnd = endOfWeek(now, { weekStartsOn: 1 })
 
   // Get all sessions from last 4 weeks
-  const sessions = await prisma.session.findMany({
+  const sessions = await prisma.trainingSession.findMany({
     where: {
       dayPlan: {
+        userId,
         date: {
           gte: fourWeeksAgo,
         },
@@ -44,6 +47,7 @@ async function getDashboardData() {
   // Get pain logs
   const painLogs = await prisma.painLog.findMany({
     where: {
+      userId,
       date: {
         gte: fourWeeksAgo,
       },
@@ -56,6 +60,7 @@ async function getDashboardData() {
   // Get weight logs
   const weightLogs = await prisma.weightLog.findMany({
     where: {
+      userId,
       date: {
         gte: fourWeeksAgo,
       },
@@ -123,7 +128,12 @@ async function getDashboardData() {
 }
 
 export default async function DashboardPage() {
-  const data = await getDashboardData()
+  const user = await getCurrentUser()
+  if (!user?.id) {
+    redirect('/auth/signin')
+  }
+  
+  const data = await getDashboardData(user.id)
 
   return (
     <div className="min-h-screen flex flex-col">

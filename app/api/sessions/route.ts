@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireAuth } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user // Unauthorized response
+    
     const body = await request.json()
     const { 
       date, 
@@ -25,6 +29,7 @@ export async function POST(request: NextRequest) {
 
     let dayPlan = await prisma.dayPlan.findFirst({
       where: {
+        userId: user.id,
         date: {
           gte: dayStart,
           lte: dayEnd,
@@ -35,13 +40,14 @@ export async function POST(request: NextRequest) {
     if (!dayPlan) {
       dayPlan = await prisma.dayPlan.create({
         data: {
+          userId: user.id,
           date: dayStart,
         },
       })
     }
 
     // Create session
-    const session = await prisma.session.create({
+    const session = await prisma.trainingSession.create({
       data: {
         dayPlanId: dayPlan.id,
         type,

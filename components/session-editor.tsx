@@ -14,10 +14,10 @@ import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { useToast } from '@/components/ui/use-toast'
 import { Info } from 'lucide-react'
-import type { Session, StrengthExercise, RunDetails, SwimDetails, ExerciseSet } from '@prisma/client'
+import type { TrainingSession, StrengthExercise, RunDetails, SwimDetails, ExerciseSet } from '@prisma/client'
 
 interface SessionEditorProps {
-  session: Session & {
+  session: TrainingSession & {
     runDetails?: RunDetails | null
     swimDetails?: SwimDetails | null
     strengthExercises?: (StrengthExercise & {

@@ -7,12 +7,12 @@ import { SessionEditor } from '@/components/session-editor'
 import { AddSessionDialog } from '@/components/add-session-dialog'
 import { useRouter } from 'next/navigation'
 import { startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns'
-import type { Session, DayPlan } from '@prisma/client'
+import type { TrainingSession, DayPlan } from '@prisma/client'
 
 interface CalendarClientProps {
   initialDate: Date
   initialWeekData: (DayPlan & {
-    sessions: (Session & {
+    sessions: (TrainingSession & {
       runDetails?: { plannedKm?: number | null; completedKm?: number | null } | null
       swimDetails?: { plannedMeters?: number | null; completedMeters?: number | null } | null
       strengthExercises?: Array<{ name: string }>
@@ -45,7 +45,7 @@ export function CalendarClient({ initialDate, initialWeekData }: CalendarClientP
   const [weekData, setWeekData] = useState(Array.from(uniqueInitialData.values()).sort((a, b) => {
     return new Date(a.date).getTime() - new Date(b.date).getTime()
   }))
-  const [selectedSession, setSelectedSession] = useState<Session | null>(null)
+  const [selectedSession, setSelectedSession] = useState<TrainingSession | null>(null)
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
@@ -97,7 +97,7 @@ export function CalendarClient({ initialDate, initialWeekData }: CalendarClientP
     }
   }
 
-  const handleSessionClick = (session: Session) => {
+  const handleSessionClick = (session: TrainingSession) => {
     setSelectedSession(session)
     setIsEditorOpen(true)
   }

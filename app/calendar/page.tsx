@@ -4,15 +4,18 @@ import { DaySection } from '@/components/day-section'
 import { CalendarClient } from './calendar-client'
 import { prisma } from '@/lib/prisma'
 import { startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns'
+import { getCurrentUser } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
-async function getWeekData(date: Date) {
+async function getWeekData(date: Date, userId: string) {
   const weekStart = startOfWeek(date, { weekStartsOn: 1 })
   const weekEnd = endOfWeek(date, { weekStartsOn: 1 })
   
   const dayPlans = await prisma.dayPlan.findMany({
     where: {
+      userId,
       date: {
         gte: weekStart,
         lte: weekEnd,
@@ -83,8 +86,13 @@ export default async function CalendarPage({
 }: {
   searchParams: { today?: string; add?: string }
 }) {
+  const user = await getCurrentUser()
+  if (!user?.id) {
+    redirect('/auth/signin')
+  }
+  
   const initialDate = searchParams.today === 'true' ? new Date() : new Date()
-  const weekData = await getWeekData(initialDate)
+  const weekData = await getWeekData(initialDate, user.id)
 
   return (
     <div className="min-h-screen flex flex-col">

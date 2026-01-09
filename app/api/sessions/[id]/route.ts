@@ -1,14 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { startOfWeek, endOfWeek, addWeeks, subWeeks, getDay } from 'date-fns'
+import { requireAuth } from '@/lib/auth'
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user // Unauthorized response
+    
     const body = await request.json()
     const { id } = params
+    
+    // Verify session belongs to user
+    const existingSession = await prisma.trainingSession.findFirst({
+      where: {
+        id,
+        dayPlan: {
+          userId: user.id,
+        },
+      },
+    })
+    
+    if (!existingSession) {
+      return NextResponse.json(
+        { error: 'Session not found' },
+        { status: 404 }
+      )
+    }
 
     const updateData: any = {
       status: body.status,
@@ -83,7 +104,7 @@ export async function PATCH(
       }
     }
 
-    const updated = await prisma.session.update({
+    const updated = await prisma.trainingSession.update({
       where: { id },
       data: updateData,
       include: {
@@ -107,9 +128,10 @@ export async function PATCH(
         nextWednesday.setDate(nextWeekStart.getDate() + 2) // Wednesday is 2 days after Monday
         
         // Find the next week's long run session
-        const nextWeekLongRun = await prisma.session.findFirst({
+        const nextWeekLongRun = await prisma.trainingSession.findFirst({
           where: {
             dayPlan: {
+              userId: user.id,
               date: {
                 gte: new Date(nextWednesday.getFullYear(), nextWednesday.getMonth(), nextWednesday.getDate()),
                 lt: new Date(nextWednesday.getFullYear(), nextWednesday.getMonth(), nextWednesday.getDate() + 1),
@@ -137,7 +159,7 @@ export async function PATCH(
           })
           
           // Update the session title to reflect new distance
-          await prisma.session.update({
+          await prisma.trainingSession.update({
             where: { id: nextWeekLongRun.id },
             data: {
               title: `Long Run ${skippedDistance.toFixed(1)} km`,
@@ -150,9 +172,10 @@ export async function PATCH(
             const weekAfterWednesday = new Date(weekAfterStart)
             weekAfterWednesday.setDate(weekAfterStart.getDate() + 2)
             
-            const weekAfterLongRun = await prisma.session.findFirst({
+            const weekAfterLongRun = await prisma.trainingSession.findFirst({
               where: {
                 dayPlan: {
+                  userId: user.id,
                   date: {
                     gte: new Date(weekAfterWednesday.getFullYear(), weekAfterWednesday.getMonth(), weekAfterWednesday.getDate()),
                     lt: new Date(weekAfterWednesday.getFullYear(), weekAfterWednesday.getMonth(), weekAfterWednesday.getDate() + 1),
@@ -174,7 +197,7 @@ export async function PATCH(
                 },
               })
               
-              await prisma.session.update({
+              await prisma.trainingSession.update({
                 where: { id: weekAfterLongRun.id },
                 data: {
                   title: `Long Run ${originalDistance.toFixed(1)} km`,
@@ -201,10 +224,30 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user // Unauthorized response
+    
     const { id } = params
 
+    // Verify session belongs to user before deleting
+    const existingSession = await prisma.trainingSession.findFirst({
+      where: {
+        id,
+        dayPlan: {
+          userId: user.id,
+        },
+      },
+    })
+    
+    if (!existingSession) {
+      return NextResponse.json(
+        { error: 'Session not found' },
+        { status: 404 }
+      )
+    }
+
     // Delete session (cascade will handle related records)
-    await prisma.session.delete({
+    await prisma.trainingSession.delete({
       where: { id },
     })
 
