@@ -108,7 +108,7 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
     }
   }, [open, session])
 
-  const handleSave = async (showToast = true) => {
+  const handleSave = async (showToast = true, skipUpdate = false) => {
     try {
       const updateData: any = {
         status,
@@ -149,7 +149,10 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
         })
       }
 
-      onUpdate()
+      // Only call onUpdate if not skipping (for auto-save, we skip to keep dialog open)
+      if (!skipUpdate) {
+        onUpdate()
+      }
     } catch (error) {
       if (showToast) {
         toast({
@@ -167,10 +170,24 @@ export function SessionEditor({ session, open, onClose, onUpdate }: SessionEdito
       clearTimeout(autoSaveTimeout)
     }
     const timeout = setTimeout(() => {
-      handleSave(false) // Don't show toast for auto-save
+      handleSave(false, true) // Don't show toast and skip onUpdate to keep dialog open
     }, 1000) // 1 second debounce
     setAutoSaveTimeout(timeout)
   }
+  
+  // Auto-save on unmount (when dialog closes or user navigates away)
+  useEffect(() => {
+    return () => {
+      // Save any pending changes when component unmounts
+      if (autoSaveTimeout) {
+        clearTimeout(autoSaveTimeout)
+        // Trigger immediate save before unmounting
+        handleSave(false, true).catch(() => {
+          // Silently fail - user might have navigated away
+        })
+      }
+    }
+  }, [autoSaveTimeout])
   
   // Cleanup timeout on unmount
   useEffect(() => {
