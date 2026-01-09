@@ -16,8 +16,17 @@ CREATE TABLE IF NOT EXISTS "calendars" (
     CONSTRAINT "calendars_pkey" PRIMARY KEY ("id")
 );
 
--- AddForeignKey: Calendars -> Users
-ALTER TABLE "calendars" ADD CONSTRAINT "calendars_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- AddForeignKey: Calendars -> Users (only if not exists)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'calendars_userId_fkey'
+    ) THEN
+        ALTER TABLE "calendars" ADD CONSTRAINT "calendars_userId_fkey" 
+        FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- CreateIndex: Calendars userId
 CREATE INDEX IF NOT EXISTS "calendars_userId_idx" ON "calendars"("userId");
@@ -25,13 +34,22 @@ CREATE INDEX IF NOT EXISTS "calendars_userId_idx" ON "calendars"("userId");
 -- Add calendarId to day_plans (nullable first)
 ALTER TABLE "day_plans" ADD COLUMN IF NOT EXISTS "calendarId" TEXT;
 
--- AddForeignKey: DayPlans -> Calendars
-ALTER TABLE "day_plans" ADD CONSTRAINT "day_plans_calendarId_fkey" FOREIGN KEY ("calendarId") REFERENCES "calendars"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- AddForeignKey: DayPlans -> Calendars (only if not exists)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'day_plans_calendarId_fkey'
+    ) THEN
+        ALTER TABLE "day_plans" ADD CONSTRAINT "day_plans_calendarId_fkey" 
+        FOREIGN KEY ("calendarId") REFERENCES "calendars"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- CreateIndex: DayPlans calendarId
 CREATE INDEX IF NOT EXISTS "day_plans_calendarId_idx" ON "day_plans"("calendarId");
 
--- Drop old unique constraint and create new one with calendarId
+-- Drop old unique constraint if exists and create new one with calendarId
 DROP INDEX IF EXISTS "day_plans_userId_date_key";
 CREATE UNIQUE INDEX IF NOT EXISTS "day_plans_userId_date_calendarId_key" ON "day_plans"("userId", "date", "calendarId");
 
