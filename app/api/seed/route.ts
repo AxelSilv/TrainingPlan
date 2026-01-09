@@ -169,9 +169,22 @@ export async function POST(request: NextRequest) {
         }
       })
       
-      // Check which sessions have user modifications (completed data, status changed, etc.)
-      const userModifiedSessionIds = new Set<string>()
+      // Create a set of seed-generated session identifiers (type + title)
+      const seedSessionKeys = new Set<string>()
+      for (const session of day.sessions) {
+        seedSessionKeys.add(`${session.type}:${session.title}`)
+      }
+      
+      // Check which sessions should be preserved:
+      // 1. User-added sessions (not in seed plan)
+      // 2. User-modified sessions (have completed data, status changed, etc.)
+      const sessionsToPreserve = new Set<string>()
       for (const existingSession of existingSessions) {
+        const sessionKey = `${existingSession.type}:${existingSession.title}`
+        const isSeedSession = seedSessionKeys.has(sessionKey)
+        const isUserAdded = !isSeedSession
+        
+        // Check if session has user modifications
         const hasUserModifications = 
           existingSession.status !== 'planned' ||
           existingSession.completedRpe !== null ||
@@ -187,14 +200,19 @@ export async function POST(request: NextRequest) {
             )
           ))
         
-        if (hasUserModifications) {
-          userModifiedSessionIds.add(existingSession.id)
-          console.log(`💾 Preserving user-modified session: ${existingSession.title} (${normalizedDate.toISOString().split('T')[0]})`)
+        if (isUserAdded) {
+          // Always preserve user-added sessions
+          sessionsToPreserve.add(existingSession.id)
+          console.log(`💾 Preserving user-added session: ${existingSession.title} (${normalizedDate.toISOString().split('T')[0]})`)
+        } else if (hasUserModifications) {
+          // Preserve seed sessions that have been modified by user
+          sessionsToPreserve.add(existingSession.id)
+          console.log(`💾 Preserving user-modified seed session: ${existingSession.title} (${normalizedDate.toISOString().split('T')[0]})`)
         }
       }
       
-      // Delete only sessions that don't have user modifications
-      const sessionsToDelete = existingSessions.filter(s => !userModifiedSessionIds.has(s.id))
+      // Delete only seed sessions that don't have user modifications and are not user-added
+      const sessionsToDelete = existingSessions.filter(s => !sessionsToPreserve.has(s.id))
       const sessionIdsToDelete = sessionsToDelete.map(s => s.id)
       
       if (sessionIdsToDelete.length > 0) {
@@ -232,7 +250,7 @@ export async function POST(request: NextRequest) {
         const similarSession = existingSessions.find(s => 
           s.type === session.type && 
           s.title === session.title &&
-          userModifiedSessionIds.has(s.id)
+          sessionsToPreserve.has(s.id)
         )
         
         if (similarSession) {
