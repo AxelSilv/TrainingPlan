@@ -24,9 +24,31 @@ model User {
   accounts      Account[]
   sessions      Session[]
   userSettings  UserSettings?
+  calendars     Calendar[]
   dayPlans      DayPlan[]
 
   @@map("users")
+}
+
+model Calendar {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  isActive    Boolean   @default(false) // Only one active calendar per user
+  startDate   DateTime
+  endDate     DateTime
+  goals       String?   // JSON string for training goals
+  activities  String?   // JSON string for preferred activities
+  frequency   String?   // JSON string for training frequency preferences
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  dayPlans    DayPlan[]
+
+  @@index([userId])
+  @@map("calendars")
 }
 
 model Account {
@@ -88,16 +110,19 @@ model UserSettings {
 }
 
 model DayPlan {
-  id        String    @id @default(cuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date      DateTime
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  sessions  TrainingSession[]
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  calendarId String?
+  calendar   Calendar? @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+  date       DateTime
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  sessions   TrainingSession[]
 
-  @@unique([userId, date])
+  @@unique([userId, date, calendarId])
   @@index([userId])
+  @@index([calendarId])
   @@map("day_plans")
 }
 
