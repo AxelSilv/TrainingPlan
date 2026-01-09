@@ -252,54 +252,158 @@ async function main() {
       
       // Create run details if applicable
       if (session.type === 'run' && session.runDetails) {
-        await prisma.runDetails.create({
-          data: {
-            sessionId: createdSession.id,
-            plannedKm: session.runDetails.plannedKm,
-            elevationGain: session.runDetails.elevationGain,
-            surface: session.runDetails.surface
-          }
+        // Check if run details already exist (from user-modified session)
+        const existingRunDetails = await prisma.runDetails.findUnique({
+          where: { sessionId: createdSession.id }
         })
+        
+        if (!existingRunDetails) {
+          await prisma.runDetails.create({
+            data: {
+              sessionId: createdSession.id,
+              plannedKm: session.runDetails.plannedKm,
+              elevationGain: session.runDetails.elevationGain,
+              surface: session.runDetails.surface
+            }
+          })
+        } else {
+          // Update only planned fields, preserve completed fields
+          await prisma.runDetails.update({
+            where: { sessionId: createdSession.id },
+            data: {
+              plannedKm: session.runDetails.plannedKm,
+              elevationGain: session.runDetails.elevationGain,
+              surface: session.runDetails.surface
+              // Don't update completedKm
+            }
+          })
+        }
       }
       
       // Create swim details if applicable
       if (session.type === 'swim' && session.swimDetails) {
-        await prisma.swimDetails.create({
-          data: {
-            sessionId: createdSession.id,
-            plannedMeters: session.swimDetails.plannedMeters,
-            sets: session.swimDetails.sets
-          }
+        const existingSwimDetails = await prisma.swimDetails.findUnique({
+          where: { sessionId: createdSession.id }
         })
+        
+        if (!existingSwimDetails) {
+          await prisma.swimDetails.create({
+            data: {
+              sessionId: createdSession.id,
+              plannedMeters: session.swimDetails.plannedMeters,
+              sets: session.swimDetails.sets
+            }
+          })
+        } else {
+          // Update only planned fields, preserve completed fields
+          await prisma.swimDetails.update({
+            where: { sessionId: createdSession.id },
+            data: {
+              plannedMeters: session.swimDetails.plannedMeters,
+              sets: session.swimDetails.sets
+              // Don't update completedMeters
+            }
+          })
+        }
       }
       
       // Create strength exercises if applicable
       if (session.type === 'strength' && session.strengthExercises) {
+        // Get existing exercises for this session
+        const existingExercises = await prisma.strengthExercise.findMany({
+          where: { sessionId: createdSession.id },
+          include: { sets: true }
+        })
+        
         for (let i = 0; i < session.strengthExercises.length; i++) {
           const ex = session.strengthExercises[i]
-          const createdExercise = await prisma.strengthExercise.create({
-            data: {
-              sessionId: createdSession.id,
-              name: ex.name,
-              restTime: ex.restTime,
-              notes: ex.notes ?? null,
-              order: i
-            }
-          })
           
-          // Create sets for this exercise
-          if (ex.sets && Array.isArray(ex.sets)) {
-            for (const set of ex.sets) {
-              await prisma.exerciseSet.create({
-                data: {
-                  strengthExerciseId: createdExercise.id,
-                  setNumber: set.setNumber,
-                  reps: set.reps,
-                  load: set.load,
-                  rpe: set.rpe,
-                  isDropSet: set.isDropSet ?? false,
+          // Check if exercise already exists (by name)
+          const existingExercise = existingExercises.find(e => e.name === ex.name)
+          
+          let exerciseId: string
+          if (existingExercise) {
+            // Update existing exercise (only planned fields)
+            await prisma.strengthExercise.update({
+              where: { id: existingExercise.id },
+              data: {
+                restTime: ex.restTime,
+                notes: ex.notes,
+                order: i
+              }
+            })
+            exerciseId = existingExercise.id
+            
+            // Check if sets have user modifications (load, reps, rpe, notes)
+            const userModifiedSetIds = new Set<string>()
+            for (const existingSet of existingExercise.sets) {
+              if (existingSet.load !== null || existingSet.reps !== null || existingSet.rpe !== null || existingSet.notes !== null) {
+                userModifiedSetIds.add(existingSet.id)
+              }
+            }
+            
+            // Delete sets that don't have user modifications
+            const setsToDelete = existingExercise.sets.filter(s => !userModifiedSetIds.has(s.id))
+            if (setsToDelete.length > 0) {
+              await prisma.exerciseSet.deleteMany({
+                where: {
+                  id: { in: setsToDelete.map(s => s.id) }
                 }
               })
+            }
+            
+            // Add new sets or update existing ones
+            if (ex.sets && Array.isArray(ex.sets)) {
+              for (const set of ex.sets) {
+                const existingSet = existingExercise.sets.find(s => s.setNumber === set.setNumber && userModifiedSetIds.has(s.id))
+                
+                if (existingSet) {
+                  // Skip updating user-modified sets (preserve user data)
+                  continue
+                } else {
+                  // Create new set
+                  await prisma.exerciseSet.create({
+                    data: {
+                      strengthExerciseId: exerciseId,
+                      setNumber: set.setNumber,
+                      reps: set.reps,
+                      load: set.load,
+                      rpe: set.rpe,
+                      isDropSet: set.isDropSet ?? false,
+                      notes: set.notes
+                    }
+                  })
+                }
+              }
+            }
+          } else {
+            // Create new exercise
+            const createdExercise = await prisma.strengthExercise.create({
+              data: {
+                sessionId: createdSession.id,
+                name: ex.name,
+                restTime: ex.restTime,
+                notes: ex.notes,
+                order: i
+              }
+            })
+            exerciseId = createdExercise.id
+            
+            // Create sets for this exercise
+            if (ex.sets && Array.isArray(ex.sets)) {
+              for (const set of ex.sets) {
+                await prisma.exerciseSet.create({
+                  data: {
+                    strengthExerciseId: exerciseId,
+                    setNumber: set.setNumber,
+                    reps: set.reps,
+                    load: set.load,
+                    rpe: set.rpe,
+                    isDropSet: set.isDropSet ?? false,
+                    notes: set.notes
+                  }
+                })
+              }
             }
           }
         }
